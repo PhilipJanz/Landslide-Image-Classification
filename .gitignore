@@ -1,0 +1,16 @@
+# Ignore Python compiled files
+__pycache__/
+*.pyc
+
+# Ignore large data files
+*.npy
+
+# Ignore model files
+*.pth
+*.keras
+
+# Ignore submission/output files
+*.csv
+
+# Ignore Jupyter notebook checkpoints
+.ipynb_checkpoints/
