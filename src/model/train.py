@@ -7,7 +7,7 @@ import pandas as pd
 from pathlib import Path
 import sys
 import time
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score
 from tqdm import tqdm
 import warnings
 import math
@@ -20,7 +20,7 @@ if src_path not in sys.path:
     sys.path.append(src_path)
 
 import config
-from model.architecture_config import get_vit_model
+from model.architecture_config import get_multimodal_cnn_model
 
 class LandslideDataset(Dataset):
     """Dataset for loading processed landslide detection images - loads all data into memory."""
@@ -43,7 +43,6 @@ class LandslideDataset(Dataset):
         self.labels = self.df['label'].values.astype(np.float32)
         
         # Load all images into memory at once
-        print("Loading all images into memory...")
         self.images = []
         self.valid_indices = []
         
@@ -118,8 +117,9 @@ def calculate_metrics(y_true, y_pred):
     # Calculate metrics
     accuracy = accuracy_score(y_true, y_pred_binary)
     f1 = f1_score(y_true, y_pred_binary, average='binary')
-    
-    return accuracy, f1
+    recall = recall_score(y_true, y_pred_binary, average='binary')
+    precision = precision_score(y_true, y_pred_binary, average='binary')
+    return accuracy, recall, precision, f1
 
 def train_epoch(model, dataloader, criterion, optimizer, device):
     """Train for one epoch."""
@@ -151,10 +151,10 @@ def train_epoch(model, dataloader, criterion, optimizer, device):
     # Calculate metrics
     all_predictions = np.array(all_predictions).flatten()
     all_targets = np.array(all_targets).flatten()
-    accuracy, f1 = calculate_metrics(all_targets, all_predictions)
+    accuracy, recall, precision, f1 = calculate_metrics(all_targets, all_predictions)
     
     avg_loss = total_loss / len(dataloader)
-    return avg_loss, accuracy, f1
+    return avg_loss, accuracy, f1, recall, precision
 
 def validate_epoch(model, dataloader, criterion, device):
     """Validate for one epoch."""
@@ -182,12 +182,12 @@ def validate_epoch(model, dataloader, criterion, device):
     # Calculate metrics
     all_predictions = np.array(all_predictions).flatten()
     all_targets = np.array(all_targets).flatten()
-    accuracy, f1 = calculate_metrics(all_targets, all_predictions)
+    accuracy, recall, precision, f1 = calculate_metrics(all_targets, all_predictions)
     
     avg_loss = total_loss / len(dataloader)
-    return avg_loss, accuracy, f1
+    return avg_loss, accuracy, f1, recall, precision
 
-def train_model():
+def train_model(fc_units=128, dropout=0.4, final_dropout=0.4, lr=0.001, weight_decay=3e-5):
     """Main training function with 5-fold cross-validation and no early stopping."""
     print(f"Using device: {config.DEVICE}")
     device = torch.device(config.DEVICE)
@@ -233,7 +233,7 @@ def train_model():
             shuffle=False,
             num_workers=0
         )
-        model = get_vit_model().to(device)
+        model = get_multimodal_cnn_model(fc_units=fc_units, dropout=dropout, final_dropout=final_dropout).to(device)
         total_params = sum(p.numel() for p in model.parameters())
         trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         print(f"Total parameters: {total_params:,}")
@@ -242,8 +242,8 @@ def train_model():
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         optimizer = optim.Adam(
             model.parameters(),
-            lr=0.001,
-            weight_decay=3e-5
+            lr=lr,
+            weight_decay=weight_decay
         )
         warmup_epochs = int(0.1 * config.EPOCHS)
         scheduler = CosineAnnealingWarmupScheduler(
@@ -256,10 +256,10 @@ def train_model():
         for epoch in range(config.EPOCHS):
             print(f"\nEpoch {epoch+1}/{config.EPOCHS}")
             print("-" * 50)
-            train_loss, train_acc, train_f1 = train_epoch(
+            train_loss, train_acc, train_f1, train_recall, train_precision = train_epoch(
                 model, train_loader, criterion, optimizer, device
             )
-            val_loss, val_acc, val_f1 = validate_epoch(
+            val_loss, val_acc, val_f1, val_recall, val_precision = validate_epoch(
                 model, val_loader, criterion, device
             )
             current_lr = scheduler.step(epoch)
@@ -269,8 +269,8 @@ def train_model():
             val_accuracies.append(val_acc)
             train_f1s.append(train_f1)
             val_f1s.append(val_f1)
-            print(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, Train F1: {train_f1:.4f}")
-            print(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}, Val F1: {val_f1:.4f}")
+            print(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, Train Rec: {train_recall:.4f}, Train Prec: {train_precision:.4f}, Train F1: {train_f1:.4f}")
+            print(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}, Val Rec: {val_recall:.4f}, Val Prec: {val_precision:.4f}, Val F1: {val_f1:.4f}")
             print(f"Learning Rate: {current_lr:.6f}")
         # Save model at last epoch
         model_path = model_dir / f"{config.MODEL_NAME}_{fold}.pth"

@@ -1,4 +1,5 @@
-from model.architecture import ViT, MultiModalViT
+from model.vit_architecture import ViT, MultiModalViT
+from model.cnn_architecture import MultiModalCNN
 import config
 
 def get_vit_model():
@@ -11,7 +12,7 @@ def get_vit_model():
         in_chans=config.IMAGE_CHANNELS,
         num_classes=1,
         embed_dim=96,
-        spatial_depth=2,
+        spatial_depth=6,
         num_heads=6,
         mlp_ratio=4.0,
         dropout=0.2,  # Use 0.1 for prediction if needed, or make this configurable
@@ -41,3 +42,16 @@ def get_multimodal_vit_model():
         drop_path=0.2,
         mlp_hidden_dim=128
     )
+
+def get_multimodal_cnn_model(fc_units=128, dropout=0.4, final_dropout=0.4):
+    """
+    Returns a MultiModalCNN model instance for multi-modal (optical + SAR) input (PyTorch version).
+    Args:
+        fc_units (int): Number of units in the fully connected layers.
+        dropout (float): Dropout rate for feature extraction layers.
+        final_dropout (float): Dropout rate after the final fully connected layer.
+    """
+    return MultiModalCNN(fc_units=fc_units, dropout=dropout, final_dropout=final_dropout)
+
+# Example usage:
+# model = get_multimodal_cnn_model(fc_units=128, dropout=0.3, final_dropout=0.5)
