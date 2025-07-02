@@ -44,7 +44,7 @@ SEED = 42
 # Image processing settings
 IMAGE_HEIGHT = 64
 IMAGE_WIDTH = 64
-IMAGE_CHANNELS = 12
+IMAGE_CHANNELS = 10
 
 # Training settings
 BATCH_SIZE = 64
@@ -55,4 +55,4 @@ EPOCHS = 100
 DEVICE = "cuda"  # or "cpu"
 
 # Name for the saved model file
-MODEL_NAME = "landslide_ViT_V6"
+MODEL_NAME = "landslide_MMCNN_V1"

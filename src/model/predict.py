@@ -14,7 +14,7 @@ if src_path not in sys.path:
     sys.path.append(src_path)
 
 import config
-from model.architecture_config import get_vit_model
+from model.architecture_config import get_multimodal_cnn_model
 
 class TestDataset(Dataset):
     """Dataset for loading processed test images."""
@@ -103,7 +103,7 @@ def predict_model():
     all_probs = []
     for model_path in model_paths:
         print(f"Loading model from {model_path}")
-        model = get_vit_model().to(device)
+        model = get_multimodal_cnn_model(dropout=0.0, final_dropout=0.0).to(device)
         checkpoint = torch.load(model_path, map_location=device)
         model.load_state_dict(checkpoint['model_state_dict'])
         model.eval()

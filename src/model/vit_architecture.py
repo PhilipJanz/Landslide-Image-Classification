@@ -9,18 +9,18 @@ class HybridPatchEmbed(nn.Module):
     Hybrid Patch Embedding using multiple Conv2d layers with smaller kernels.
     For 64x64 input, outputs 64 tokens (8x8 spatial) with richer features.
     """
-    def __init__(self, img_size=64, patch_size=8, in_chans=12, embed_dim=192):
+    def __init__(self, img_size=64, patch_size=8, in_chans=10, embed_dim=192):
         super().__init__()
         self.img_size = img_size
         self.patch_size = patch_size
         self.num_patches = (img_size // patch_size) ** 2  # 64 for 64x64 with 8x8 patches
         # 2 conv layers: 3x3 stride 2 (->32x32), 3x3 stride 2 (->16x16), 3x3 stride 2 (->8x8)
         self.conv = nn.Sequential(
-            nn.Conv2d(in_chans, 64, kernel_size=3, stride=2, padding=1),  # 64x64 -> 32x32
+            nn.Conv2d(in_chans, 16, kernel_size=3, stride=2, padding=1),  # 64x64 -> 32x32
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1),        # 32x32 -> 16x16
+            nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1),        # 32x32 -> 16x16
             nn.ReLU(),
-            nn.Conv2d(64, embed_dim, kernel_size=3, stride=2, padding=1), # 16x16 -> 8x8
+            nn.Conv2d(32, embed_dim, kernel_size=3, stride=2, padding=1), # 16x16 -> 8x8
             nn.ReLU(),
         )
 
@@ -125,14 +125,14 @@ class MultiModalViT(nn.Module):
     - SAR2: channels 8-11
     Cross-attention between all pairs, then fusion and joint encoding.
     """
-    def __init__(self, img_size=64, patch_size=8, in_chans=12, num_classes=1, embed_dim=192,
+    def __init__(self, img_size=64, patch_size=8, in_chans=10, num_classes=1, embed_dim=192,
                  optical_depth=2, sar1_depth=2, sar2_depth=2, fusion_depth=2, num_heads=6, mlp_ratio=4.0,
                  dropout=0.1, attn_dropout=0.1, drop_path=0.1, mlp_hidden_dim=768):
         super().__init__()
         # Patch embedding for each modality
         self.optical_patch_embed = HybridPatchEmbed(img_size, patch_size, 4, embed_dim)
-        self.sar1_patch_embed = HybridPatchEmbed(img_size, patch_size, 4, embed_dim)
-        self.sar2_patch_embed = HybridPatchEmbed(img_size, patch_size, 4, embed_dim)
+        self.sar1_patch_embed = HybridPatchEmbed(img_size, patch_size, 3, embed_dim)
+        self.sar2_patch_embed = HybridPatchEmbed(img_size, patch_size, 3, embed_dim)
         self.num_patches = self.optical_patch_embed.num_patches  # 64
 
         # Positional embeddings (shared for all streams)
@@ -197,8 +197,8 @@ class MultiModalViT(nn.Module):
         B, C, H, W = x.shape
         # Split modalities
         x_opt = x[:, :4, :, :]    # (B, 4, H, W)
-        x_sar1 = x[:, 4:8, :, :]  # (B, 4, H, W)
-        x_sar2 = x[:, 8:12, :, :] # (B, 4, H, W)
+        x_sar1 = x[:, 4:7, :, :]  # (B, 4, H, W)
+        x_sar2 = x[:, 7:, :, :] # (B, 4, H, W)
         # Patch embedding
         patches_opt = self.optical_patch_embed(x_opt)    # (B, num_patches, embed_dim)
         patches_sar1 = self.sar1_patch_embed(x_sar1)     # (B, num_patches, embed_dim)
