@@ -8,7 +8,7 @@ src_path = str(Path(__file__).parent.parent)
 if src_path not in sys.path:
     sys.path.append(src_path)
 
-from config import SEED
+from config import MODEL_NAME, SEED
 from model.train import train_model
 
 def objective(trial):
@@ -19,17 +19,17 @@ def objective(trial):
     lr = trial.suggest_loguniform('lr', 1e-5, 1e-2)
     weight_decay = trial.suggest_loguniform('weight_decay', 1e-6, 1e-2)
 
-    metrics = train_model(fc_units=fc_units, dropout=dropout, final_dropout=final_dropout, lr=lr, weight_decay=weight_decay)
-    return np.mean(metrics["val_f1"])
+    fold_metrics = train_model(fc_units=fc_units, dropout=dropout, final_dropout=final_dropout, lr=lr, weight_decay=weight_decay, show_process=False, save_model=False)
+    return np.mean([m["val_f1"] for m in fold_metrics])
 
 
 sampler = optuna.samplers.TPESampler(n_startup_trials=50, multivariate=True,
                                      warn_independent_sampling=False, seed=SEED)
 study = optuna.create_study(
-    storage="sqlite:///db.sqlite3",  # Specify the storage URL here.
-    study_name="quadratic-simple", 
+    storage="sqlite:///optuna_study.db",  # Specify the storage URL here.
+    study_name=MODEL_NAME, 
     sampler=sampler,
     direction="maximize"
 )
-study.optimize(objective, n_trials=100)
+study.optimize(objective, n_trials=150)
 print(f"Best value: {study.best_value} (params: {study.best_params})")

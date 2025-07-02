@@ -187,7 +187,7 @@ def validate_epoch(model, dataloader, criterion, device):
     avg_loss = total_loss / len(dataloader)
     return avg_loss, accuracy, f1, recall, precision
 
-def train_model(fc_units=128, dropout=0.4, final_dropout=0.4, lr=0.001, weight_decay=3e-5):
+def train_model(fc_units=128, dropout=0.4, final_dropout=0.4, lr=0.001, weight_decay=3e-5, show_process=True, save_model=True):
     """Main training function with 5-fold cross-validation and no early stopping."""
     print(f"Using device: {config.DEVICE}")
     device = torch.device(config.DEVICE)
@@ -235,9 +235,7 @@ def train_model(fc_units=128, dropout=0.4, final_dropout=0.4, lr=0.001, weight_d
         )
         model = get_multimodal_cnn_model(fc_units=fc_units, dropout=dropout, final_dropout=final_dropout).to(device)
         total_params = sum(p.numel() for p in model.parameters())
-        trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         print(f"Total parameters: {total_params:,}")
-        print(f"Trainable parameters: {trainable_params:,}")
         pos_weight = torch.tensor([5.0]).to(device)
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         optimizer = optim.Adam(
@@ -254,44 +252,50 @@ def train_model(fc_units=128, dropout=0.4, final_dropout=0.4, lr=0.001, weight_d
         )
         train_losses, val_losses, train_accuracies, val_accuracies, train_f1s, val_f1s = [], [], [], [], [], []
         for epoch in range(config.EPOCHS):
-            print(f"\nEpoch {epoch+1}/{config.EPOCHS}")
-            print("-" * 50)
+            if show_process:
+                print(f"\nEpoch {epoch+1}/{config.EPOCHS}")
+                print("-" * 50)
             train_loss, train_acc, train_f1, train_recall, train_precision = train_epoch(
                 model, train_loader, criterion, optimizer, device
             )
-            val_loss, val_acc, val_f1, val_recall, val_precision = validate_epoch(
-                model, val_loader, criterion, device
-            )
             current_lr = scheduler.step(epoch)
             train_losses.append(train_loss)
-            val_losses.append(val_loss)
             train_accuracies.append(train_acc)
-            val_accuracies.append(val_acc)
             train_f1s.append(train_f1)
-            val_f1s.append(val_f1)
-            print(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, Train Rec: {train_recall:.4f}, Train Prec: {train_precision:.4f}, Train F1: {train_f1:.4f}")
-            print(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}, Val Rec: {val_recall:.4f}, Val Prec: {val_precision:.4f}, Val F1: {val_f1:.4f}")
-            print(f"Learning Rate: {current_lr:.6f}")
-        # Save model at last epoch
-        model_path = model_dir / f"{config.MODEL_NAME}_{fold}.pth"
-        torch.save({
-            'epoch': config.EPOCHS-1,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-            'train_losses': train_losses,
-            'val_losses': val_losses,
-            'train_accuracies': train_accuracies,
-            'val_accuracies': val_accuracies,
-            'train_f1s': train_f1s,
-            'val_f1s': val_f1s,
-        }, model_path)
-        print(f"Saved model for fold {fold} to {model_path}")
-        print(f"Final Val Loss: {val_losses[-1]:.4f}, Val Acc: {val_accuracies[-1]:.4f}, Val F1: {val_f1s[-1]:.4f}")
+            if show_process:
+                val_loss, val_acc, val_f1, val_recall, val_precision = validate_epoch(
+                    model, val_loader, criterion, device
+                )
+                val_losses.append(val_loss)
+                val_accuracies.append(val_acc)
+                val_f1s.append(val_f1)
+                print(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, Train Rec: {train_recall:.4f}, Train Prec: {train_precision:.4f}, Train F1: {train_f1:.4f}")
+                print(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}, Val Rec: {val_recall:.4f}, Val Prec: {val_precision:.4f}, Val F1: {val_f1:.4f}")
+                print(f"Learning Rate: {current_lr:.6f}")
+        if save_model:
+            # Save model at last epoch
+            model_path = model_dir / f"{config.MODEL_NAME}_{fold}.pth"
+            torch.save({
+                'epoch': config.EPOCHS-1,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'train_losses': train_losses,
+                'val_losses': val_losses,
+                'train_accuracies': train_accuracies,
+                'val_accuracies': val_accuracies,
+                'train_f1s': train_f1s,
+                'val_f1s': val_f1s,
+            }, model_path)
+            print(f"Saved model for fold {fold} to {model_path}")
+        val_loss, val_acc, val_f1, val_recall, val_precision = validate_epoch(
+                    model, val_loader, criterion, device
+                )
+        print(f"Final Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}, Val F1: {val_f1:.4f}")
         fold_metrics.append({
             'fold': fold,
-            'val_loss': val_losses[-1],
-            'val_acc': val_accuracies[-1],
-            'val_f1': val_f1s[-1]
+            'val_loss': val_loss,
+            'val_acc': val_acc,
+            'val_f1': val_f1
         })
     print("\nCross-validation complete!")
     for m in fold_metrics:
