@@ -8,19 +8,25 @@ class CNNBranch(nn.Module):
         # Input: (B, in_channels, 64, 64)
         self.features = nn.Sequential(
             nn.Conv2d(in_channels, 16, kernel_size=3, padding=1),  # -> (B, 16, 64, 64)
+            nn.BatchNorm2d(16),
             nn.ReLU(),
             nn.Conv2d(16, 16, kernel_size=3, padding=1),           # -> (B, 16, 64, 64)
+            nn.BatchNorm2d(16),
             nn.ReLU(),
             nn.MaxPool2d(2),                                      # -> (B, 16, 32, 32)
             nn.Conv2d(16, 32, kernel_size=3, padding=1),           # -> (B, 32, 32, 32)
+            nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.Conv2d(32, 32, kernel_size=3, padding=1),           # -> (B, 32, 32, 32)
+            nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(2),                                      # -> (B, 32, 16, 16)
             nn.Conv2d(32, 64, kernel_size=3, padding=1),           # -> (B, 64, 16, 16)
+            nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Conv2d(64, 64, kernel_size=3, padding=1),           # -> (B, 64, 16, 16)
+            nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.MaxPool2d(2),                                      # -> (B, 64, 8, 8)
             nn.Dropout(dropout),
@@ -39,10 +45,12 @@ class MultiModalCNN(nn.Module):
         # After concat: (B, 192, 8, 8)
         self.fusion_block = nn.Sequential(
             nn.Conv2d(192, 128, kernel_size=3, padding=1),  # -> (B, 128, 8, 8)
+            nn.BatchNorm2d(128),
             nn.ReLU(),
             nn.MaxPool2d(2),                                      # -> (B, 128, 4, 4)
             nn.Dropout(dropout),
             nn.Conv2d(128, 64, kernel_size=3, padding=1),   # -> (B, 64, 4, 4)
+            nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.Dropout(dropout),
         )

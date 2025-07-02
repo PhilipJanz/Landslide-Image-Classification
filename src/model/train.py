@@ -187,7 +187,7 @@ def validate_epoch(model, dataloader, criterion, device):
     avg_loss = total_loss / len(dataloader)
     return avg_loss, accuracy, f1, recall, precision
 
-def train_model(fc_units=128, dropout=0.4, final_dropout=0.4, lr=0.001, weight_decay=3e-5, show_process=True, save_model=True):
+def train_model(fc_units=128, dropout=0.4, final_dropout=0.4, lr=0.0005, weight_decay=5e-5, show_process=True, save_model=True):
     """Main training function with 5-fold cross-validation and no early stopping."""
     print(f"Using device: {config.DEVICE}")
     device = torch.device(config.DEVICE)
