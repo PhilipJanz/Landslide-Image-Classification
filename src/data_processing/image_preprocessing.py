@@ -144,7 +144,7 @@ def process_dataset(input_dir, output_dir, dataset_name, band_means=None, band_s
         img = load_npy_file(file_path)
         if img is None:
             continue
-        if img.shape != (IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_CHANNELS):
+        if img.shape[:2] != (IMAGE_HEIGHT, IMAGE_WIDTH):
             print(f"Skipping {file_path.name}: wrong shape {img.shape}")
             continue
         desc_vv = img[:, :, 4]

@@ -19,7 +19,7 @@ if src_path not in sys.path:
     sys.path.append(src_path)
 
 import config
-from model.architecture import ViT
+from src.model.vit_architecture import ViT
 
 class LandslideDataset(Dataset):
     """Dataset for loading processed landslide detection images - loads all data into memory."""
