@@ -40,8 +40,8 @@ class MultiModalCNN(nn.Module):
     def __init__(self, fc_units=128, dropout=0.4, final_dropout=0.4):
         super().__init__()
         self.optical_branch = CNNBranch(4, dropout)
-        self.sar_desc_branch = CNNBranch(3, dropout)
-        self.sar_asc_branch = CNNBranch(3, dropout)
+        self.sar_desc_branch = CNNBranch(4, dropout)
+        self.sar_asc_branch = CNNBranch(4, dropout)
         # After concat: (B, 192, 8, 8)
         self.fusion_block = nn.Sequential(
             nn.Conv2d(192, 128, kernel_size=3, padding=1),  # -> (B, 128, 8, 8)
@@ -62,8 +62,8 @@ class MultiModalCNN(nn.Module):
     def forward(self, x):
         # x: (B, 10, 64, 64)
         x_opt = self.optical_branch(x[:, 0:4, :, :])      # (B, 64, 8, 8)
-        x_sar_desc = self.sar_desc_branch(x[:, 4:7, :, :])# (B, 64, 8, 8)
-        x_sar_asc = self.sar_asc_branch(x[:, 7:10, :, :]) # (B, 64, 8, 8)
+        x_sar_desc = self.sar_desc_branch(x[:, 4:8, :, :])# (B, 64, 8, 8)
+        x_sar_asc = self.sar_asc_branch(x[:, 8:, :, :]) # (B, 64, 8, 8)
         x = torch.cat([x_opt, x_sar_desc, x_sar_asc], dim=1)  # (B, 192, 8, 8)
         x = self.fusion_block(x)                              # (B, 64, 4, 4)
         x = self.global_pool(x)                               # (B, 64, 1, 1)
@@ -72,4 +72,3 @@ class MultiModalCNN(nn.Module):
         x = self.final_dropout(x)
         x = self.classifier(x)
         return x
-

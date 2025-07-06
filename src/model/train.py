@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader, random_split, Subset
+import torchvision.transforms as transforms
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -12,6 +13,8 @@ from tqdm import tqdm
 import warnings
 import math
 from sklearn.model_selection import KFold
+import matplotlib.pyplot as plt
+import seaborn as sns
 warnings.filterwarnings('ignore')
 
 # Add src to Python path
@@ -79,6 +82,59 @@ class LandslideDataset(Dataset):
         
         return image, label
 
+class DataAugmentationTransform:
+    """Data augmentation transform for landslide images."""
+    
+    def __init__(self, p_hflip=0.5, p_vflip=0.5):
+        """
+        Args:
+            p_hflip: Probability of horizontal flip (default: 0.5)
+            p_vflip: Probability of vertical flip (default: 0.5)
+        """
+        self.p_hflip = p_hflip
+        self.p_vflip = p_vflip
+    
+    def __call__(self, image):
+        """
+        Apply data augmentation to the image.
+        
+        Args:
+            image: Tensor of shape (C, H, W)
+            
+        Returns:
+            Augmented image tensor
+        """
+        # Horizontal flip
+        if torch.rand(1) < self.p_hflip:
+            image = torch.flip(image, dims=[2])  # Flip along width dimension
+        
+        # Vertical flip
+        if torch.rand(1) < self.p_vflip:
+            image = torch.flip(image, dims=[1])  # Flip along height dimension
+        
+        return image
+    
+class TransformedSubset(Dataset):
+    """
+    A wrapper for a Subset that applies a transform.
+    
+    Args:
+        subset (Subset): The subset of the dataset.
+        transform (callable, optional): A function/transform to be applied to the image.
+    """
+    def __init__(self, subset, transform=None):
+        self.subset = subset
+        self.transform = transform
+
+    def __getitem__(self, index):
+        image, label = self.subset[index]
+        if self.transform:
+            image = self.transform(image)
+        return image, label
+
+    def __len__(self):
+        return len(self.subset)
+    
 class CosineAnnealingWarmupScheduler:
     """Cosine annealing scheduler with warmup."""
     
@@ -120,6 +176,133 @@ def calculate_metrics(y_true, y_pred):
     recall = recall_score(y_true, y_pred_binary, average='binary')
     precision = precision_score(y_true, y_pred_binary, average='binary')
     return accuracy, recall, precision, f1
+
+def create_training_plots(train_accuracies, val_accuracies, 
+                         train_f1s, val_f1s, fold, model_dir):
+    """
+    Create and save training progression plots for a specific fold.
+    
+    Args:
+        train_accuracies: List of training accuracies per epoch
+        val_accuracies: List of validation accuracies per epoch
+        train_f1s: List of training F1 scores per epoch
+        val_f1s: List of validation F1 scores per epoch
+        fold: Current fold number
+        model_dir: Directory to save the plots
+    """
+    # Create visualizations directory
+    viz_dir = model_dir / "visualizations"
+    viz_dir.mkdir(exist_ok=True)
+    
+    # Set up the plotting style
+    try:
+        plt.style.use('seaborn-v0_8')
+    except:
+        plt.style.use('default')
+    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+    
+    epochs = range(1, len(train_f1s) + 1)
+    
+    # Plot all metrics on the same graph
+    ax.plot(epochs, train_f1s, 'tab:blue', linewidth=2, label='Train F1', alpha=0.4)
+    ax.plot(epochs, val_f1s, 'tab:blue', linewidth=2, label='Validation F1', alpha=0.85)
+    ax.plot(epochs, train_accuracies, 'tab:orange', linewidth=2, label='Train Accuracy', alpha=0.4)
+    ax.plot(epochs, val_accuracies, 'tab:orange', linewidth=2, label='Validation Accuracy', alpha=0.85)
+    
+    ax.set_xlabel('Epoch', fontsize=12)
+    ax.set_ylabel('Performance (Accuracy/F1)', fontsize=12)
+    ax.set_title(f'Training Progression - Fold {fold+1}', fontsize=14, fontweight='bold')
+    ax.legend(fontsize=11)
+    ax.grid(True, alpha=0.3)
+    ax.set_ylim(.7, 1)
+    
+    # Adjust layout and save
+    plt.tight_layout()
+    plot_path = viz_dir / f"training_progression_fold_{fold+1}.png"
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+def create_summary_plot(fold_metrics, model_dir):
+    """
+    Create a summary plot showing all folds' final performance.
+    
+    Args:
+        fold_metrics: List of dictionaries containing fold results
+        model_dir: Directory to save the plot
+    """
+    # Create visualizations directory
+    viz_dir = model_dir / "visualizations"
+    viz_dir.mkdir(exist_ok=True)
+    
+    # Set up the plotting style
+    try:
+        plt.style.use('seaborn-v0_8')
+    except:
+        plt.style.use('default')
+    
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
+    
+    folds = [m['fold'] + 1 for m in fold_metrics]
+    f1_scores = [m['val_f1'] for m in fold_metrics]
+    accuracies = [m['val_acc'] for m in fold_metrics]
+    recalls = [m['val_recall'] for m in fold_metrics]
+    precisions = [m['val_precision'] for m in fold_metrics]
+    
+    # Plot 1: F1 Scores across folds
+    bars1 = ax1.bar(folds, f1_scores, color='skyblue', alpha=0.7, edgecolor='navy', linewidth=1)
+    ax1.set_xlabel('Fold', fontsize=12)
+    ax1.set_ylabel('F1 Score', fontsize=12)
+    ax1.set_title('F1 Scores Across Folds', fontsize=14, fontweight='bold')
+    ax1.set_ylim(0, 1)
+    ax1.grid(True, alpha=0.3)
+    
+    # Add value labels on bars
+    for bar, value in zip(bars1, f1_scores):
+        ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01, 
+                f'{value:.3f}', ha='center', va='bottom', fontweight='bold')
+    
+    # Plot 2: Accuracies across folds
+    bars2 = ax2.bar(folds, accuracies, color='lightgreen', alpha=0.7, edgecolor='darkgreen', linewidth=1)
+    ax2.set_xlabel('Fold', fontsize=12)
+    ax2.set_ylabel('Accuracy', fontsize=12)
+    ax2.set_title('Accuracies Across Folds', fontsize=14, fontweight='bold')
+    ax2.set_ylim(0, 1)
+    ax2.grid(True, alpha=0.3)
+    
+    for bar, value in zip(bars2, accuracies):
+        ax2.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01, 
+                f'{value:.3f}', ha='center', va='bottom', fontweight='bold')
+    
+    # Plot 3: Recalls across folds
+    bars3 = ax3.bar(folds, recalls, color='lightcoral', alpha=0.7, edgecolor='darkred', linewidth=1)
+    ax3.set_xlabel('Fold', fontsize=12)
+    ax3.set_ylabel('Recall', fontsize=12)
+    ax3.set_title('Recalls Across Folds', fontsize=14, fontweight='bold')
+    ax3.set_ylim(0, 1)
+    ax3.grid(True, alpha=0.3)
+    
+    for bar, value in zip(bars3, recalls):
+        ax3.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01, 
+                f'{value:.3f}', ha='center', va='bottom', fontweight='bold')
+    
+    # Plot 4: Precisions across folds
+    bars4 = ax4.bar(folds, precisions, color='gold', alpha=0.7, edgecolor='orange', linewidth=1)
+    ax4.set_xlabel('Fold', fontsize=12)
+    ax4.set_ylabel('Precision', fontsize=12)
+    ax4.set_title('Precisions Across Folds', fontsize=14, fontweight='bold')
+    ax4.set_ylim(0, 1)
+    ax4.grid(True, alpha=0.3)
+    
+    for bar, value in zip(bars4, precisions):
+        ax4.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01, 
+                f'{value:.3f}', ha='center', va='bottom', fontweight='bold')
+    
+    plt.tight_layout()
+    summary_path = viz_dir / "cross_validation_summary.png"
+    plt.savefig(summary_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"Summary plot saved to: {summary_path}")
 
 def train_epoch(model, dataloader, criterion, optimizer, device):
     """Train for one epoch."""
@@ -187,7 +370,15 @@ def validate_epoch(model, dataloader, criterion, device):
     avg_loss = total_loss / len(dataloader)
     return avg_loss, accuracy, f1, recall, precision
 
-def train_model(fc_units=128, dropout=0.4, final_dropout=0.4, lr=0.0005, weight_decay=5e-5, show_process=True, save_model=True):
+def train_model(fc_units=128, 
+                dropout=0.2, 
+                final_dropout=0.2, 
+                lr=0.0005, 
+                weight_decay=5e-5, 
+                bce_weight=5.0,
+                batch_size=config.BATCH_SIZE,
+                show_process=True, 
+                save_model=True):
     """Main training function with 5-fold cross-validation and no early stopping."""
     print(f"Using device: {config.DEVICE}")
     device = torch.device(config.DEVICE)
@@ -214,29 +405,41 @@ def train_model(fc_units=128, dropout=0.4, final_dropout=0.4, lr=0.0005, weight_
     model_dir = config.MODEL_DIR / config.MODEL_NAME
     model_dir.mkdir(parents=True, exist_ok=True)
 
+    # Create data augmentation transform
+    augmentation_transform = DataAugmentationTransform(p_hflip=0.5, p_vflip=0.5)
+
     fold_metrics = []
     for fold, (train_idx, val_idx) in enumerate(kf.split(indices)):
-        print(f"\nFold {fold+1}/5")
+        print(f"\nFOLD {fold+1}/5")
         print("-" * 50)
+        
+        # Create subsets from the same dataset
         train_subset = Subset(dataset, train_idx)
         val_subset = Subset(dataset, val_idx)
+
+        # Create a transformed subset for training data
+        train_subset_with_augmentation = TransformedSubset(train_subset, transform=augmentation_transform)
+        
+        # The original dataset's transform can remain None
+        dataset.transform = None
+        
         train_loader = DataLoader(
-            train_subset,
-            batch_size=config.BATCH_SIZE,
+            train_subset_with_augmentation,
+            batch_size=batch_size,
             shuffle=True,
             num_workers=0,
             generator=torch.Generator().manual_seed(config.SEED)
         )
         val_loader = DataLoader(
             val_subset,
-            batch_size=config.BATCH_SIZE,
+            batch_size=batch_size,
             shuffle=False,
             num_workers=0
         )
         model = get_multimodal_cnn_model(fc_units=fc_units, dropout=dropout, final_dropout=final_dropout).to(device)
         total_params = sum(p.numel() for p in model.parameters())
         print(f"Total parameters: {total_params:,}")
-        pos_weight = torch.tensor([5.0]).to(device)
+        pos_weight = torch.tensor([bce_weight]).to(device)
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         optimizer = optim.Adam(
             model.parameters(),
@@ -286,20 +489,58 @@ def train_model(fc_units=128, dropout=0.4, final_dropout=0.4, lr=0.0005, weight_
                 'train_f1s': train_f1s,
                 'val_f1s': val_f1s,
             }, model_path)
-            print(f"Saved model for fold {fold} to {model_path}")
+            # Create training plots for this fold
+            create_training_plots(train_accuracies, val_accuracies, 
+                                train_f1s, val_f1s, fold, model_dir)
+            
         val_loss, val_acc, val_f1, val_recall, val_precision = validate_epoch(
                     model, val_loader, criterion, device
                 )
-        print(f"Final Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}, Val F1: {val_f1:.4f}")
+        print(f"Final Val Acc: {val_acc:.4f}, Val F1: {val_f1:.4f}")
         fold_metrics.append({
             'fold': fold,
-            'val_loss': val_loss,
             'val_acc': val_acc,
-            'val_f1': val_f1
+            'val_f1': val_f1,
+            'val_recall': val_recall,
+            'val_precision': val_precision
         })
-    print("\nCross-validation complete!")
+        
+    
+    # Calculate and display average metrics across all folds
+    print("\n" + "="*80)
+    print("CROSS-VALIDATION RESULTS SUMMARY")
+    print("="*80)
+    
+    # Individual fold results
+    print("\nIndividual Fold Results:")
+    print("-" * 60)
     for m in fold_metrics:
-        print(f"Fold {m['fold']}: Val Loss={m['val_loss']:.4f}, Val Acc={m['val_acc']:.4f}, Val F1={m['val_f1']:.4f}")
+        print(f"Fold {m['fold']+1}: Acc={m['val_acc']:.4f}, F1={m['val_f1']:.4f}, "
+              f"Recall={m['val_recall']:.4f}, Precision={m['val_precision']:.4f}")
+    
+    # Calculate averages
+    avg_acc = np.mean([m['val_acc'] for m in fold_metrics])
+    avg_f1 = np.mean([m['val_f1'] for m in fold_metrics])
+    avg_recall = np.mean([m['val_recall'] for m in fold_metrics])
+    avg_precision = np.mean([m['val_precision'] for m in fold_metrics])
+    
+    # Calculate standard deviations
+    std_acc = np.std([m['val_acc'] for m in fold_metrics])
+    std_f1 = np.std([m['val_f1'] for m in fold_metrics])
+    std_recall = np.std([m['val_recall'] for m in fold_metrics])
+    std_precision = np.std([m['val_precision'] for m in fold_metrics])
+    
+    # Display average results
+    print("\nAverage Results Across All Folds:")
+    print("-" * 60)
+    print(f"Validation Accuracy: {avg_acc:.4f} ± {std_acc:.4f}")
+    print(f"Validation Recall:   {avg_recall:.4f} ± {std_recall:.4f}")
+    print(f"Validation Precision:{avg_precision:.4f} ± {std_precision:.4f}")
+    print(f"Validation F1-Score: {avg_f1:.4f} ± {std_f1:.4f}")
+    
+    # Create summary plot
+    create_summary_plot(fold_metrics, model_dir)
+    
     return fold_metrics
 
 if __name__ == "__main__":

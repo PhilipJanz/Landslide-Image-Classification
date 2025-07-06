@@ -44,7 +44,7 @@ SEED = 42
 # Image processing settings
 IMAGE_HEIGHT = 64
 IMAGE_WIDTH = 64
-IMAGE_CHANNELS = 10
+IMAGE_CHANNELS = 12
 
 # Training settings
 BATCH_SIZE = 64
