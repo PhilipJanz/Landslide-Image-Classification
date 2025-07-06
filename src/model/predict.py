@@ -15,6 +15,7 @@ if src_path not in sys.path:
 
 import config
 from model.architecture_config import get_multimodal_cnn_model
+from utils.augmentation import DataAugmentationTransform
 
 class TestDataset(Dataset):
     """Dataset for loading processed test images."""
@@ -101,6 +102,13 @@ def predict_model():
         return
     print(f"Found {len(model_paths)} model checkpoints for ensembling.")
     all_probs = []
+    augmentation = DataAugmentationTransform()
+    tta_combinations = [
+        (False, False),  # original
+        (True, False),   # h-flip
+        (False, True),   # v-flip
+        (True, True),    # h+v-flip
+    ]
     for model_path in model_paths:
         print(f"Loading model from {model_path}")
         model = get_multimodal_cnn_model(dropout=0.0, final_dropout=0.0).to(device)
@@ -110,9 +118,16 @@ def predict_model():
         probs = []
         with torch.no_grad():
             for images, image_ids in test_loader:
-                outputs = model(images)
-                probabilities = torch.sigmoid(outputs).squeeze()
-                probs.append(probabilities.cpu().numpy())
+                tta_probs = []
+                for hflip, vflip in tta_combinations:
+                    augmented_images = torch.stack([
+                        augmentation(img, random=False, hflip=hflip, vflip=vflip) for img in images
+                    ])
+                    outputs = model(augmented_images)
+                    probabilities = torch.sigmoid(outputs).squeeze()
+                    tta_probs.append(probabilities.cpu().numpy())
+                avg_prob = np.mean(tta_probs, axis=0)
+                probs.append(avg_prob)
         all_probs.append(np.concatenate(probs))
     # Average probabilities across all models
     avg_probs = np.mean(np.stack(all_probs, axis=0), axis=0)
