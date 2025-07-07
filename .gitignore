@@ -8,6 +8,7 @@ __pycache__/
 # Ignore model files
 *.pth
 *.keras
+models/*
 
 # Ignore submission/output files
 *.csv

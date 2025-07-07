@@ -15,6 +15,8 @@ import math
 from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
 import seaborn as sns
+from codecarbon import track_emissions
+
 warnings.filterwarnings('ignore')
 
 # Add src to Python path
@@ -24,6 +26,7 @@ if src_path not in sys.path:
 
 import config
 from model.architecture_config import get_multimodal_cnn_model
+from utils.augmentation import DataAugmentationTransform
 
 class LandslideDataset(Dataset):
     """Dataset for loading processed landslide detection images - loads all data into memory."""
@@ -82,38 +85,6 @@ class LandslideDataset(Dataset):
         
         return image, label
 
-class DataAugmentationTransform:
-    """Data augmentation transform for landslide images."""
-    
-    def __init__(self, p_hflip=0.5, p_vflip=0.5):
-        """
-        Args:
-            p_hflip: Probability of horizontal flip (default: 0.5)
-            p_vflip: Probability of vertical flip (default: 0.5)
-        """
-        self.p_hflip = p_hflip
-        self.p_vflip = p_vflip
-    
-    def __call__(self, image):
-        """
-        Apply data augmentation to the image.
-        
-        Args:
-            image: Tensor of shape (C, H, W)
-            
-        Returns:
-            Augmented image tensor
-        """
-        # Horizontal flip
-        if torch.rand(1) < self.p_hflip:
-            image = torch.flip(image, dims=[2])  # Flip along width dimension
-        
-        # Vertical flip
-        if torch.rand(1) < self.p_vflip:
-            image = torch.flip(image, dims=[1])  # Flip along height dimension
-        
-        return image
-    
 class TransformedSubset(Dataset):
     """
     A wrapper for a Subset that applies a transform.
@@ -253,7 +224,7 @@ def create_summary_plot(fold_metrics, model_dir):
     ax1.set_xlabel('Fold', fontsize=12)
     ax1.set_ylabel('F1 Score', fontsize=12)
     ax1.set_title('F1 Scores Across Folds', fontsize=14, fontweight='bold')
-    ax1.set_ylim(0, 1)
+    ax1.set_ylim(0.7, 1)
     ax1.grid(True, alpha=0.3)
     
     # Add value labels on bars
@@ -266,7 +237,7 @@ def create_summary_plot(fold_metrics, model_dir):
     ax2.set_xlabel('Fold', fontsize=12)
     ax2.set_ylabel('Accuracy', fontsize=12)
     ax2.set_title('Accuracies Across Folds', fontsize=14, fontweight='bold')
-    ax2.set_ylim(0, 1)
+    ax2.set_ylim(0.7, 1)
     ax2.grid(True, alpha=0.3)
     
     for bar, value in zip(bars2, accuracies):
@@ -278,7 +249,7 @@ def create_summary_plot(fold_metrics, model_dir):
     ax3.set_xlabel('Fold', fontsize=12)
     ax3.set_ylabel('Recall', fontsize=12)
     ax3.set_title('Recalls Across Folds', fontsize=14, fontweight='bold')
-    ax3.set_ylim(0, 1)
+    ax3.set_ylim(0.7, 1)
     ax3.grid(True, alpha=0.3)
     
     for bar, value in zip(bars3, recalls):
@@ -290,7 +261,7 @@ def create_summary_plot(fold_metrics, model_dir):
     ax4.set_xlabel('Fold', fontsize=12)
     ax4.set_ylabel('Precision', fontsize=12)
     ax4.set_title('Precisions Across Folds', fontsize=14, fontweight='bold')
-    ax4.set_ylim(0, 1)
+    ax4.set_ylim(0.7, 1)
     ax4.grid(True, alpha=0.3)
     
     for bar, value in zip(bars4, precisions):
@@ -370,9 +341,10 @@ def validate_epoch(model, dataloader, criterion, device):
     avg_loss = total_loss / len(dataloader)
     return avg_loss, accuracy, f1, recall, precision
 
+#@track_emissions()
 def train_model(fc_units=128, 
-                dropout=0.2, 
-                final_dropout=0.2, 
+                dropout=0.6, 
+                final_dropout=0.6, 
                 lr=0.0005, 
                 weight_decay=5e-5, 
                 bce_weight=5.0,
@@ -406,7 +378,7 @@ def train_model(fc_units=128,
     model_dir.mkdir(parents=True, exist_ok=True)
 
     # Create data augmentation transform
-    augmentation_transform = DataAugmentationTransform(p_hflip=0.5, p_vflip=0.5)
+    augmentation_transform = DataAugmentationTransform()
 
     fold_metrics = []
     for fold, (train_idx, val_idx) in enumerate(kf.split(indices)):

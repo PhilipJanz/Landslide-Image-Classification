@@ -55,4 +55,4 @@ EPOCHS = 100
 DEVICE = "cuda"  # or "cpu"
 
 # Name for the saved model file
-MODEL_NAME = "landslide_MMCNN_V3"
+MODEL_NAME = "landslide_MMCNN-RN_comp"
