@@ -43,27 +43,30 @@ class CNNBranch(nn.Module):
         return x
 
 class MultiModalCNN(nn.Module):
-    def __init__(self, fc_units=128, dropout=0.4, final_dropout=0.4):
+    def __init__(self, fc_units=128, fusioned_kernel_units=128, dropout=0.4, final_dropout=0.4):
         super().__init__()
         self.optical_branch = CNNBranch(4, dropout)
         self.sar_desc_branch = CNNBranch(4, dropout)
         self.sar_asc_branch = CNNBranch(4, dropout)
         # After concat: (B, 192, 8, 8)
         self.fusion_block = nn.Sequential(
-            nn.Conv2d(192, 128, kernel_size=3, padding=1),  # -> (B, 128, 8, 8)
-            nn.BatchNorm2d(128),
+            nn.Conv2d(192, fusioned_kernel_units, kernel_size=3, padding=1),  # -> (B, fusioned_kernel_units, 8, 8)
+            nn.BatchNorm2d(fusioned_kernel_units),
             nn.ReLU(),
-            nn.MaxPool2d(2),                                      # -> (B, 128, 4, 4)
+            nn.MaxPool2d(2),                                      # -> (B, fusioned_kernel_units, 4, 4)
             nn.Dropout(dropout),
-            nn.Conv2d(128, 64, kernel_size=3, padding=1),   # -> (B, 64, 4, 4)
-            nn.BatchNorm2d(64),
+            nn.Conv2d(fusioned_kernel_units, fusioned_kernel_units, kernel_size=3, padding=1),   # -> (B, fusioned_kernel_units, 4, 4)
+            nn.BatchNorm2d(fusioned_kernel_units),
             nn.ReLU(),
             nn.Dropout(dropout),
         )
-        self.global_pool = nn.AdaptiveAvgPool2d(1)         # -> (B, 64, 1, 1)
-        self.final_fc = nn.Linear(64, fc_units)
-        self.final_dropout = nn.Dropout(final_dropout)
-        self.classifier = nn.Linear(fc_units, 1)
+        self.global_pool = nn.AdaptiveAvgPool2d(1)         # -> (B, fusioned_kernel_units, 1, 1)
+        self.final_fc_head = nn.Sequential(
+            nn.Linear(fusioned_kernel_units, fc_units),
+            nn.ReLU(),
+            nn.Dropout(final_dropout),
+            nn.Linear(fc_units, 1),
+        )
 
     def forward(self, x):
         # x: (B, 10, 64, 64)
@@ -71,10 +74,8 @@ class MultiModalCNN(nn.Module):
         x_sar_desc = self.sar_desc_branch(x[:, 4:8, :, :])# (B, 64, 8, 8)
         x_sar_asc = self.sar_asc_branch(x[:, 8:, :, :]) # (B, 64, 8, 8)
         x = torch.cat([x_opt, x_sar_desc, x_sar_asc], dim=1)  # (B, 192, 8, 8)
-        x = self.fusion_block(x)                              # (B, 64, 4, 4)
-        x = self.global_pool(x)                               # (B, 64, 1, 1)
-        x = x.view(x.size(0), -1)                             # (B, 64)
-        x = F.relu(self.final_fc(x))                          # (B, fc_units)
-        x = self.final_dropout(x)
-        x = self.classifier(x)
+        x = self.fusion_block(x)                              # (B, fusioned_kernel_units, 4, 4)
+        x = self.global_pool(x)                               # (B, fusioned_kernel_units, 1, 1)
+        x = x.view(x.size(0), -1)                             # (B, fusioned_kernel_units)
+        x = self.final_fc_head(x)                             # (B, 1)
         return x

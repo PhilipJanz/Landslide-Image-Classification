@@ -48,11 +48,11 @@ IMAGE_CHANNELS = 12
 
 # Training settings
 BATCH_SIZE = 64
-LEARNING_RATE = 1e-4
+LEARNING_RATE = 1e-3
 EPOCHS = 100
 
 
 DEVICE = "cuda"  # or "cpu"
 
 # Name for the saved model file
-MODEL_NAME = "landslide_MMCNN-RN_comp"
+MODEL_NAME = "landslide_MMCNN_V4rot"

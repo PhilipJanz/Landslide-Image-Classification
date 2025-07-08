@@ -14,6 +14,7 @@ from model.train import train_model
 def objective(trial):
     # Define hyperparameter search space
     fc_units = trial.suggest_categorical('fc_units', [64, 128, 256])
+    fusioned_kernel_units = trial.suggest_categorical('fusioned_kernel_units', [64, 128, 256])
     dropout = trial.suggest_float('dropout', 0.1, 0.6)
     final_dropout = trial.suggest_float('final_dropout', 0.1, 0.6)
     lr = trial.suggest_loguniform('lr', 1e-4, 1e-2)
@@ -21,13 +22,14 @@ def objective(trial):
     bce_weight = trial.suggest_float('bce_weight', 1, 6)
     batch_size = trial.suggest_categorical('batch_size', [32, 64, 128])
 
-    fold_metrics = train_model(fc_units=fc_units, dropout=dropout, final_dropout=final_dropout, 
+    fold_metrics = train_model(fc_units=fc_units, fusioned_kernel_units=fusioned_kernel_units,
+                               dropout=dropout, final_dropout=final_dropout, 
                                lr=lr, weight_decay=weight_decay, bce_weight=bce_weight, batch_size=batch_size,
                                show_process=False, save_model=False)
     return np.mean([m["val_f1"] for m in fold_metrics])
 
 
-sampler = optuna.samplers.TPESampler(n_startup_trials=20, multivariate=True,
+sampler = optuna.samplers.TPESampler(n_startup_trials=25, multivariate=True,
                                      warn_independent_sampling=False, seed=SEED)
 study = optuna.create_study(
     storage="sqlite:///optuna_study.db",  # Specify the storage URL here.
