@@ -8,9 +8,13 @@ __pycache__/
 # Ignore model files
 *.pth
 *.keras
+models/*
 
 # Ignore submission/output files
 *.csv
+
+# ignore other file
+*.npz
 
 # Ignore Jupyter notebook checkpoints
 .ipynb_checkpoints/
