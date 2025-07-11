@@ -13,8 +13,6 @@ from tqdm import tqdm
 import warnings
 import math
 from sklearn.model_selection import KFold
-import matplotlib.pyplot as plt
-import seaborn as sns
 from codecarbon import track_emissions
 
 warnings.filterwarnings('ignore')
@@ -27,6 +25,8 @@ if src_path not in sys.path:
 import config
 from model.architecture_config import get_multimodal_cnn_model
 from utils.augmentation import DataAugmentationTransform
+from utils.visualizations import create_training_plots, create_summary_plot
+
 
 class LandslideDataset(Dataset):
     """Dataset for loading processed landslide detection images - loads all data into memory."""
@@ -130,7 +130,7 @@ class CosineAnnealingWarmupScheduler:
         
         return lr
 
-def calculate_metrics(y_true, y_pred):
+def calculate_metrics(y_true, y_pred, f1_optimal=False):
     """Calculate accuracy and F1 score."""
     # Convert to numpy arrays
     if torch.is_tensor(y_true):
@@ -146,134 +146,13 @@ def calculate_metrics(y_true, y_pred):
     f1 = f1_score(y_true, y_pred_binary, average='binary')
     recall = recall_score(y_true, y_pred_binary, average='binary')
     precision = precision_score(y_true, y_pred_binary, average='binary')
+
+    if f1_optimal:
+        threshold_ls = np.arange(30, 71) / 100
+        f1_ls = [f1_score(y_true, (y_pred > threshold).astype(int), average='binary') for threshold in threshold_ls]
+        print("F1-optimal threshold: ", threshold_ls[np.argmax(f1_ls)], "F1: ", np.max(f1_ls))
     return accuracy, recall, precision, f1
 
-def create_training_plots(train_accuracies, val_accuracies, 
-                         train_f1s, val_f1s, fold, model_dir):
-    """
-    Create and save training progression plots for a specific fold.
-    
-    Args:
-        train_accuracies: List of training accuracies per epoch
-        val_accuracies: List of validation accuracies per epoch
-        train_f1s: List of training F1 scores per epoch
-        val_f1s: List of validation F1 scores per epoch
-        fold: Current fold number
-        model_dir: Directory to save the plots
-    """
-    # Create visualizations directory
-    viz_dir = model_dir / "visualizations"
-    viz_dir.mkdir(exist_ok=True)
-    
-    # Set up the plotting style
-    try:
-        plt.style.use('seaborn-v0_8')
-    except:
-        plt.style.use('default')
-    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-    
-    epochs = range(1, len(train_f1s) + 1)
-    
-    # Plot all metrics on the same graph
-    ax.plot(epochs, train_f1s, 'tab:blue', linewidth=2, label='Train F1', alpha=0.4)
-    ax.plot(epochs, val_f1s, 'tab:blue', linewidth=2, label='Validation F1', alpha=0.85)
-    ax.plot(epochs, train_accuracies, 'tab:orange', linewidth=2, label='Train Accuracy', alpha=0.4)
-    ax.plot(epochs, val_accuracies, 'tab:orange', linewidth=2, label='Validation Accuracy', alpha=0.85)
-    
-    ax.set_xlabel('Epoch', fontsize=12)
-    ax.set_ylabel('Performance (Accuracy/F1)', fontsize=12)
-    ax.set_title(f'Training Progression - Fold {fold+1}', fontsize=14, fontweight='bold')
-    ax.legend(fontsize=11)
-    ax.grid(True, alpha=0.3)
-    ax.set_ylim(.7, 1)
-    
-    # Adjust layout and save
-    plt.tight_layout()
-    plot_path = viz_dir / f"training_progression_fold_{fold+1}.png"
-    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-    plt.close()
-
-def create_summary_plot(fold_metrics, model_dir):
-    """
-    Create a summary plot showing all folds' final performance.
-    
-    Args:
-        fold_metrics: List of dictionaries containing fold results
-        model_dir: Directory to save the plot
-    """
-    # Create visualizations directory
-    viz_dir = model_dir / "visualizations"
-    viz_dir.mkdir(exist_ok=True)
-    
-    # Set up the plotting style
-    try:
-        plt.style.use('seaborn-v0_8')
-    except:
-        plt.style.use('default')
-    
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
-    
-    folds = [m['fold'] + 1 for m in fold_metrics]
-    f1_scores = [m['val_f1'] for m in fold_metrics]
-    accuracies = [m['val_acc'] for m in fold_metrics]
-    recalls = [m['val_recall'] for m in fold_metrics]
-    precisions = [m['val_precision'] for m in fold_metrics]
-    
-    # Plot 1: F1 Scores across folds
-    bars1 = ax1.bar(folds, f1_scores, color='skyblue', alpha=0.7, edgecolor='navy', linewidth=1)
-    ax1.set_xlabel('Fold', fontsize=12)
-    ax1.set_ylabel('F1 Score', fontsize=12)
-    ax1.set_title('F1 Scores Across Folds', fontsize=14, fontweight='bold')
-    ax1.set_ylim(0.8, 1)
-    ax1.grid(True, alpha=0.3)
-    
-    # Add value labels on bars
-    for bar, value in zip(bars1, f1_scores):
-        ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01, 
-                f'{value:.3f}', ha='center', va='bottom', fontweight='bold')
-    
-    # Plot 2: Accuracies across folds
-    bars2 = ax2.bar(folds, accuracies, color='lightgreen', alpha=0.7, edgecolor='darkgreen', linewidth=1)
-    ax2.set_xlabel('Fold', fontsize=12)
-    ax2.set_ylabel('Accuracy', fontsize=12)
-    ax2.set_title('Accuracies Across Folds', fontsize=14, fontweight='bold')
-    ax2.set_ylim(0.8, 1)
-    ax2.grid(True, alpha=0.3)
-    
-    for bar, value in zip(bars2, accuracies):
-        ax2.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01, 
-                f'{value:.3f}', ha='center', va='bottom', fontweight='bold')
-    
-    # Plot 3: Recalls across folds
-    bars3 = ax3.bar(folds, recalls, color='lightcoral', alpha=0.7, edgecolor='darkred', linewidth=1)
-    ax3.set_xlabel('Fold', fontsize=12)
-    ax3.set_ylabel('Recall', fontsize=12)
-    ax3.set_title('Recalls Across Folds', fontsize=14, fontweight='bold')
-    ax3.set_ylim(0.8, 1)
-    ax3.grid(True, alpha=0.3)
-    
-    for bar, value in zip(bars3, recalls):
-        ax3.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01, 
-                f'{value:.3f}', ha='center', va='bottom', fontweight='bold')
-    
-    # Plot 4: Precisions across folds
-    bars4 = ax4.bar(folds, precisions, color='gold', alpha=0.7, edgecolor='orange', linewidth=1)
-    ax4.set_xlabel('Fold', fontsize=12)
-    ax4.set_ylabel('Precision', fontsize=12)
-    ax4.set_title('Precisions Across Folds', fontsize=14, fontweight='bold')
-    ax4.set_ylim(0.8, 1)
-    ax4.grid(True, alpha=0.3)
-    
-    for bar, value in zip(bars4, precisions):
-        ax4.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01, 
-                f'{value:.3f}', ha='center', va='bottom', fontweight='bold')
-    
-    plt.tight_layout()
-    summary_path = viz_dir / "cross_validation_summary.png"
-    plt.savefig(summary_path, dpi=300, bbox_inches='tight')
-    plt.close()
-    
-    print(f"Summary plot saved to: {summary_path}")
 
 def train_epoch(model, dataloader, criterion, optimizer, device):
     """Train for one epoch."""
@@ -310,7 +189,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device):
     avg_loss = total_loss / len(dataloader)
     return avg_loss, accuracy, f1, recall, precision
 
-def validate_epoch(model, dataloader, criterion, device):
+def validate_epoch(model, dataloader, criterion, device, f1_optimal=False):
     """Validate for one epoch."""
     model.eval()
     total_loss = 0
@@ -336,10 +215,10 @@ def validate_epoch(model, dataloader, criterion, device):
     # Calculate metrics
     all_predictions = np.array(all_predictions).flatten()
     all_targets = np.array(all_targets).flatten()
-    accuracy, recall, precision, f1 = calculate_metrics(all_targets, all_predictions)
+    accuracy, recall, precision, f1 = calculate_metrics(all_targets, all_predictions, f1_optimal=f1_optimal)
     
     avg_loss = total_loss / len(dataloader)
-    return avg_loss, accuracy, f1, recall, precision
+    return avg_loss, accuracy, f1, recall, precision, all_predictions, all_targets
 
 #@track_emissions()
 def train_model(fc_units=128, 
@@ -439,7 +318,7 @@ def train_model(fc_units=128,
             train_accuracies.append(train_acc)
             train_f1s.append(train_f1)
             if show_process:
-                val_loss, val_acc, val_f1, val_recall, val_precision = validate_epoch(
+                val_loss, val_acc, val_f1, val_recall, val_precision, _, _ = validate_epoch(
                     model, val_loader, criterion, device
                 )
                 val_losses.append(val_loss)
@@ -448,6 +327,11 @@ def train_model(fc_units=128,
                 print(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, Train Rec: {train_recall:.4f}, Train Prec: {train_precision:.4f}, Train F1: {train_f1:.4f}")
                 print(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}, Val Rec: {val_recall:.4f}, Val Prec: {val_precision:.4f}, Val F1: {val_f1:.4f}")
                 print(f"Learning Rate: {current_lr:.6f}")
+            
+        val_loss, val_acc, val_f1, val_recall, val_precision, all_predictions, all_targets = validate_epoch(
+                    model, val_loader, criterion, device, f1_optimal=True
+                )
+    
         if save_model:
             # Save model at last epoch
             model_path = model_dir / f"{config.MODEL_NAME}_{fold}.pth"
@@ -455,20 +339,20 @@ def train_model(fc_units=128,
                 'epoch': config.EPOCHS-1,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
+                "train_idx": train_idx,
+                "val_idx": val_idx,
                 'train_losses': train_losses,
                 'val_losses': val_losses,
                 'train_accuracies': train_accuracies,
                 'val_accuracies': val_accuracies,
                 'train_f1s': train_f1s,
                 'val_f1s': val_f1s,
+                "final_val_predictions": all_predictions,
+                "val_targets": all_targets,
             }, model_path)
             # Create training plots for this fold
             create_training_plots(train_accuracies, val_accuracies, 
                                 train_f1s, val_f1s, fold, model_dir)
-            
-        val_loss, val_acc, val_f1, val_recall, val_precision = validate_epoch(
-                    model, val_loader, criterion, device
-                )
         print(f"Final Val Acc: {val_acc:.4f}, Val F1: {val_f1:.4f}")
         fold_metrics.append({
             'fold': fold,
