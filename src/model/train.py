@@ -224,7 +224,7 @@ def create_summary_plot(fold_metrics, model_dir):
     ax1.set_xlabel('Fold', fontsize=12)
     ax1.set_ylabel('F1 Score', fontsize=12)
     ax1.set_title('F1 Scores Across Folds', fontsize=14, fontweight='bold')
-    ax1.set_ylim(0.7, 1)
+    ax1.set_ylim(0.8, 1)
     ax1.grid(True, alpha=0.3)
     
     # Add value labels on bars
@@ -237,7 +237,7 @@ def create_summary_plot(fold_metrics, model_dir):
     ax2.set_xlabel('Fold', fontsize=12)
     ax2.set_ylabel('Accuracy', fontsize=12)
     ax2.set_title('Accuracies Across Folds', fontsize=14, fontweight='bold')
-    ax2.set_ylim(0.7, 1)
+    ax2.set_ylim(0.8, 1)
     ax2.grid(True, alpha=0.3)
     
     for bar, value in zip(bars2, accuracies):
@@ -249,7 +249,7 @@ def create_summary_plot(fold_metrics, model_dir):
     ax3.set_xlabel('Fold', fontsize=12)
     ax3.set_ylabel('Recall', fontsize=12)
     ax3.set_title('Recalls Across Folds', fontsize=14, fontweight='bold')
-    ax3.set_ylim(0.7, 1)
+    ax3.set_ylim(0.8, 1)
     ax3.grid(True, alpha=0.3)
     
     for bar, value in zip(bars3, recalls):
@@ -261,7 +261,7 @@ def create_summary_plot(fold_metrics, model_dir):
     ax4.set_xlabel('Fold', fontsize=12)
     ax4.set_ylabel('Precision', fontsize=12)
     ax4.set_title('Precisions Across Folds', fontsize=14, fontweight='bold')
-    ax4.set_ylim(0.7, 1)
+    ax4.set_ylim(0.8, 1)
     ax4.grid(True, alpha=0.3)
     
     for bar, value in zip(bars4, precisions):

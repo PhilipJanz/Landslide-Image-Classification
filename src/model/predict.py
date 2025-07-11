@@ -103,11 +103,16 @@ def predict_model():
     print(f"Found {len(model_paths)} model checkpoints for ensembling.")
     all_probs = []
     augmentation = DataAugmentationTransform()
+    # 8 combinations: (hflip, vflip, rotate)
     tta_combinations = [
-        (False, False),  # original
-        (True, False),   # h-flip
-        (False, True),   # v-flip
-        (True, True),    # h+v-flip
+        (False, False, False),  # original
+        (True, False, False),   # h-flip
+        (False, True, False),   # v-flip
+        (True, True, False),    # h+v-flip
+        (False, False, True),   # rotate
+        (True, False, True),    # h-flip + rotate
+        (False, True, True),    # v-flip + rotate
+        (True, True, True),     # h+v-flip + rotate
     ]
     for model_path in model_paths:
         print(f"Loading model from {model_path}")
@@ -119,9 +124,9 @@ def predict_model():
         with torch.no_grad():
             for images, image_ids in test_loader:
                 tta_probs = []
-                for hflip, vflip in tta_combinations:
+                for hflip, vflip, rotate in tta_combinations:
                     augmented_images = torch.stack([
-                        augmentation(img, random=False, hflip=hflip, vflip=vflip) for img in images
+                        augmentation(img, random=False, hflip=hflip, vflip=vflip, rotate=rotate) for img in images
                     ])
                     outputs = model(augmented_images)
                     probabilities = torch.sigmoid(outputs).squeeze()
