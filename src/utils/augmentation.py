@@ -11,7 +11,7 @@ class DataAugmentationTransform:
                  p_erase=0.3,
                  p_rotate=0.5,
                  p_crop=0.5,
-                 crop_scale=(0.8, 1.0)):
+                 crop_scale=(0.6, 1.0)):
         """
         Args:
             p_hflip: Probability of horizontal flip
@@ -25,14 +25,15 @@ class DataAugmentationTransform:
         self.p_vflip = p_vflip
         self.p_erase = p_erase
         self.p_rotate = p_rotate
-        '''
+        
+        """
         self.p_crop = p_crop
         self.random_resized_crop = T.RandomResizedCrop(
             size=(64, 64),
             scale=crop_scale,
             ratio=(1.0, 1.0),  # Keep square aspect ratio
             antialias=True
-        )'''
+        )"""
 
     def __call__(self, image, random=True, hflip=False, vflip=False, rotate=False):
         """
