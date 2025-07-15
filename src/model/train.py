@@ -222,7 +222,6 @@ def validate_epoch(model, dataloader, criterion, device, f1_optimal=False):
 
 #@track_emissions()
 def train_model(fc_units=128, 
-                fusioned_kernel_units=64,
                 dropout=0.55, 
                 final_dropout=0.25, 
                 lr=config.LEARNING_RATE, 
@@ -288,7 +287,7 @@ def train_model(fc_units=128,
             shuffle=False,
             num_workers=0
         )
-        model = get_multimodal_cnn_model(fc_units=fc_units, fusioned_kernel_units=fusioned_kernel_units, dropout=dropout, final_dropout=final_dropout).to(device)
+        model = get_multimodal_cnn_model(fc_units=fc_units, dropout=dropout, final_dropout=final_dropout).to(device)
         total_params = sum(p.numel() for p in model.parameters())
         print(f"Total parameters: {total_params:,}")
         pos_weight = torch.tensor([bce_weight]).to(device)

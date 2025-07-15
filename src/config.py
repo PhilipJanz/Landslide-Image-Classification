@@ -22,6 +22,9 @@ TEST_IMAGE_DIR = RAW_DATA_DIR / "test"
 PROCESSED_TRAIN_IMAGE_DIR = PROCESSED_DATA_DIR / "train"
 PROCESSED_TEST_IMAGE_DIR = PROCESSED_DATA_DIR / "test"
 
+# Path to preprocessed features for stage-1 modeling
+PROCESSED_FEATURE_PATH = PROCESSED_DATA_DIR / "features"
+
 
 # Paths to the CSV files in the raw data directory
 TRAIN_CSV_PATH = RAW_DATA_DIR / "Train.csv"
@@ -34,6 +37,21 @@ FM_MODEL_DIR = MODEL_DIR / "foundation_models"
 OUTPUT_DIR = PROJECT_ROOT / "outputs"
 SUBMISSIONS_DIR = OUTPUT_DIR / "submissions"
 
+# band information after preprocessing
+BAND_DESCRIPTIONS = [
+    "Red", "Green", "Blue", "Near Infrared",
+    "Descending VV post", "Descending VH post",
+    "Descending VV pre", "Descending VH pre",
+    "Ascending VV post", "Ascending VH post",
+    "Ascending VV pre", "Ascending VH pre"
+]
+BAND_LABELS = [
+    "red", "green", "blue", "nir",
+    "desc_VV_post", "desc_VH_post",
+    "desc_VV_pre", "desc_VH_pre",
+    "asc_VV_post", "asc_VH_post",
+    "asc_VV_pre", "asc_VH_pre",
+]
 
 # ---------------------------------------------------------------------------- #
 #                        Model & Training Hyperparameters                      #
@@ -55,4 +73,4 @@ EPOCHS = 100
 DEVICE = "cuda"  # or "cpu"
 
 # Name for the saved model file
-MODEL_NAME = "landslide_MMCNN_V4"
+MODEL_NAME = "landslide_MMCNN_V5"
