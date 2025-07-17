@@ -43,7 +43,7 @@ class CNNBranch(nn.Module):
         return x
 
 class MultiModalCNN(nn.Module):
-    def __init__(self, fc_units=128, fusioned_kernel_units=128, dropout=0.4, final_dropout=0.4):
+    def __init__(self, fc_units=128, fusioned_kernel_units=64, dropout=0.4, final_dropout=0.4):
         super().__init__()
         self.optical_branch = CNNBranch(4, dropout)
         self.sar_desc_branch = CNNBranch(4, dropout)

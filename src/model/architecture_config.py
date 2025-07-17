@@ -43,7 +43,7 @@ def get_multimodal_vit_model():
         mlp_hidden_dim=128
     )
 
-def get_multimodal_cnn_model(fc_units=128, fusioned_kernel_units=64, dropout=0.3, final_dropout=0.3):
+def get_multimodal_cnn_model(fc_units=128, dropout=0.3, final_dropout=0.3):
     """
     Returns a MultiModalCNN model instance for multi-modal (optical + SAR) input (PyTorch version).
     Args:
@@ -52,7 +52,6 @@ def get_multimodal_cnn_model(fc_units=128, fusioned_kernel_units=64, dropout=0.3
         final_dropout (float): Dropout rate after the final fully connected layer.
     """
     return MultiModalCNN(fc_units=fc_units, 
-                         fusioned_kernel_units=fusioned_kernel_units, 
                          dropout=dropout, 
                          final_dropout=final_dropout)
 
