@@ -45,6 +45,11 @@ class LandslideDataset(Dataset):
         
         # Load CSV data
         self.df = pd.read_csv(csv_path)
+        # load feature model predictions
+        feature_model_preds = pd.read_csv(config.PROCESSED_FEATURE_PATH / "train_prediction.csv")
+        obvious_neg_image_ids = feature_model_preds.ID.values[feature_model_preds.label == 0]
+        self.df = self.df[[id not in obvious_neg_image_ids for id in self.df.ID]]
+
         self.image_ids = self.df['ID'].values
         self.labels = self.df['label'].values.astype(np.float32)
         
@@ -150,8 +155,11 @@ def calculate_metrics(y_true, y_pred, f1_optimal=False):
     if f1_optimal:
         threshold_ls = np.arange(30, 71) / 100
         f1_ls = [f1_score(y_true, (y_pred > threshold).astype(int), average='binary') for threshold in threshold_ls]
-        print("F1-optimal threshold: ", threshold_ls[np.argmax(f1_ls)], "F1: ", np.max(f1_ls))
-    return accuracy, recall, precision, f1
+        f1_opt_threshold = threshold_ls[np.argmax(f1_ls)]
+        print("F1-optimal threshold: ", f1_opt_threshold, "F1: ", np.max(f1_ls))
+        return accuracy, recall, precision, f1, f1_opt_threshold
+    else:
+        return accuracy, recall, precision, f1
 
 
 def train_epoch(model, dataloader, criterion, optimizer, device):
@@ -215,10 +223,14 @@ def validate_epoch(model, dataloader, criterion, device, f1_optimal=False):
     # Calculate metrics
     all_predictions = np.array(all_predictions).flatten()
     all_targets = np.array(all_targets).flatten()
-    accuracy, recall, precision, f1 = calculate_metrics(all_targets, all_predictions, f1_optimal=f1_optimal)
-    
-    avg_loss = total_loss / len(dataloader)
-    return avg_loss, accuracy, f1, recall, precision, all_predictions, all_targets
+
+    if f1_optimal:
+        accuracy, recall, precision, f1, f1_opt_threshold = calculate_metrics(all_targets, all_predictions, f1_optimal=f1_optimal)
+        return accuracy, f1, recall, precision, all_predictions, all_targets, f1_opt_threshold
+    else:
+        accuracy, recall, precision, f1 = calculate_metrics(all_targets, all_predictions, f1_optimal=f1_optimal)
+        return accuracy, f1, recall, precision, all_predictions, all_targets
+
 
 #@track_emissions()
 def train_model(fc_units=128, 
@@ -317,17 +329,16 @@ def train_model(fc_units=128,
             train_accuracies.append(train_acc)
             train_f1s.append(train_f1)
             if show_process:
-                val_loss, val_acc, val_f1, val_recall, val_precision, _, _ = validate_epoch(
+                val_acc, val_f1, val_recall, val_precision, _, _ = validate_epoch(
                     model, val_loader, criterion, device
                 )
-                val_losses.append(val_loss)
                 val_accuracies.append(val_acc)
                 val_f1s.append(val_f1)
                 print(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, Train Rec: {train_recall:.4f}, Train Prec: {train_precision:.4f}, Train F1: {train_f1:.4f}")
-                print(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}, Val Rec: {val_recall:.4f}, Val Prec: {val_precision:.4f}, Val F1: {val_f1:.4f}")
+                print(f"Val Acc: {val_acc:.4f}, Val Rec: {val_recall:.4f}, Val Prec: {val_precision:.4f}, Val F1: {val_f1:.4f}")
                 print(f"Learning Rate: {current_lr:.6f}")
             
-        val_loss, val_acc, val_f1, val_recall, val_precision, all_predictions, all_targets = validate_epoch(
+        val_acc, val_f1, val_recall, val_precision, all_predictions, all_targets, f1_opt_threshold = validate_epoch(
                     model, val_loader, criterion, device, f1_optimal=True
                 )
     
@@ -348,6 +359,7 @@ def train_model(fc_units=128,
                 'val_f1s': val_f1s,
                 "final_val_predictions": all_predictions,
                 "val_targets": all_targets,
+                "f1_opt_threshold": f1_opt_threshold,
             }, model_path)
             # Create training plots for this fold
             create_training_plots(train_accuracies, val_accuracies, 

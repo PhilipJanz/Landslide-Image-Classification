@@ -117,7 +117,7 @@ def predict_model():
     for model_path in model_paths:
         print(f"Loading model from {model_path}")
         model = get_multimodal_cnn_model(dropout=0.0, final_dropout=0.0).to(device)
-        checkpoint = torch.load(model_path, map_location=device)
+        checkpoint = torch.load(model_path, map_location=device, weights_only=False)
         model.load_state_dict(checkpoint['model_state_dict'])
         model.eval()
         probs = []
@@ -133,7 +133,9 @@ def predict_model():
                     tta_probs.append(probabilities.cpu().numpy())
                 avg_prob = np.mean(tta_probs, axis=0)
                 probs.append(avg_prob)
-        all_probs.append(np.concatenate(probs))
+        #probs = (np.concatenate(probs) > checkpoint['f1_opt_threshold']) * 1
+        probs = np.concatenate(probs)
+        all_probs.append(probs)
     # Average probabilities across all models
     avg_probs = np.mean(np.stack(all_probs, axis=0), axis=0)
     # Get image IDs in order
@@ -144,6 +146,15 @@ def predict_model():
         'ID': all_image_ids,
         'label': predictions
     })
+    # check for negatives from the feature model
+    feature_model_preds = pd.read_csv(config.PROCESSED_FEATURE_PATH / "train_prediction.csv")
+    obvious_neg_image_ids = feature_model_preds.ID.values[feature_model_preds.label == 0]
+    obvious_neg_image_loc = [id in obvious_neg_image_ids for id in submission_df.ID]
+    obvious_neg_image_pred =  submission_df[obvious_neg_image_loc].label
+    if np.sum(obvious_neg_image_pred) > 0:
+        print(f"Feature model sets {np.sum(obvious_neg_image_pred)} positive predictions to negative.")
+        submission_df.label[obvious_neg_image_loc] = 0
+    
     config.SUBMISSIONS_DIR.mkdir(parents=True, exist_ok=True)
     model_name_without_ext = config.MODEL_NAME.replace('.pth', '')
     submission_file_path = config.SUBMISSIONS_DIR / f"submission_{model_name_without_ext}.csv"
