@@ -4,7 +4,6 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader, random_split, Subset
 import torchvision.transforms as transforms
 import numpy as np
-import pandas as pd
 from pathlib import Path
 import sys
 import time
@@ -15,7 +14,7 @@ import math
 from sklearn.model_selection import KFold
 from codecarbon import track_emissions
 
-warnings.filterwarnings('ignore')
+#warnings.filterwarnings('ignore')
 
 # Add src to Python path
 src_path = str(Path(__file__).parent.parent)
@@ -26,90 +25,8 @@ import config
 from model.architecture_config import get_multimodal_cnn_model
 from utils.augmentation import DataAugmentationTransform
 from utils.visualizations import create_training_plots, create_summary_plot
+from utils.dataset_loader import LandslideDataset, TransformedSubset
 
-
-class LandslideDataset(Dataset):
-    """Dataset for loading processed landslide detection images - loads all data into memory."""
-    
-    def __init__(self, image_dir, csv_path, transform=None, device="cpu"):
-        """
-        Args:
-            image_dir: Directory containing processed .npy files
-            csv_path: Path to CSV file with image IDs and labels
-            transform: Optional transform to apply to images
-            device: Device to load data onto ("cpu" or "cuda")
-        """
-        self.image_dir = Path(image_dir)
-        self.transform = transform
-        self.device = device
-        
-        # Load CSV data
-        self.df = pd.read_csv(csv_path)
-        # load feature model predictions
-        feature_model_preds = pd.read_csv(config.PROCESSED_FEATURE_PATH / "train_prediction.csv")
-        obvious_neg_image_ids = feature_model_preds.ID.values[feature_model_preds.label == 0]
-        self.df = self.df[[id not in obvious_neg_image_ids for id in self.df.ID]]
-
-        self.image_ids = self.df['ID'].values
-        self.labels = self.df['label'].values.astype(np.float32)
-        
-        # Load all images into memory at once
-        self.images = []
-        self.valid_indices = []
-        
-        for i, img_id in enumerate(tqdm(self.image_ids, desc="Loading images")):
-            img_path = self.image_dir / f"{img_id}.npy"
-            if img_path.exists():
-                # Load image and convert to tensor
-                image = np.load(img_path).astype(np.float32)
-                image = torch.from_numpy(image).permute(2, 0, 1)  # (C, H, W)
-                
-                # Move to device if specified
-                if device != "cpu":
-                    image = image.to(device)
-                
-                self.images.append(image)
-                self.valid_indices.append(i)
-            else:
-                print(f"Warning: {img_path} not found")
-        
-        print(f"Loaded {len(self.valid_indices)} valid images out of {len(self.image_ids)}")
-        print(f"Total memory usage: {sum(img.element_size() * img.nelement() for img in self.images) / 1024**3:.2f} GB")
-    
-    def __len__(self):
-        return len(self.valid_indices)
-    
-    def __getitem__(self, idx):
-        # Get valid index
-        valid_idx = self.valid_indices[idx]
-        label = self.labels[valid_idx]
-        image = self.images[idx]  # Already loaded in memory
-        
-        if self.transform:
-            image = self.transform(image)
-        
-        return image, label
-
-class TransformedSubset(Dataset):
-    """
-    A wrapper for a Subset that applies a transform.
-    
-    Args:
-        subset (Subset): The subset of the dataset.
-        transform (callable, optional): A function/transform to be applied to the image.
-    """
-    def __init__(self, subset, transform=None):
-        self.subset = subset
-        self.transform = transform
-
-    def __getitem__(self, index):
-        image, label = self.subset[index]
-        if self.transform:
-            image = self.transform(image)
-        return image, label
-
-    def __len__(self):
-        return len(self.subset)
     
 class CosineAnnealingWarmupScheduler:
     """Cosine annealing scheduler with warmup."""

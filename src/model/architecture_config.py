@@ -1,4 +1,4 @@
-from model.vit_architecture import ViT, MultiModalViT
+from model.alternative_approaches.vit_architecture import ViT, MultiModalViT
 from model.cnn_architecture import MultiModalCNN
 import config
 
