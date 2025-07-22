@@ -17,6 +17,25 @@ import config
 from model.architecture_config import get_multimodal_cnn_model
 from utils.augmentation import DataAugmentationTransform
 
+def anchored_sigmoid(x, t):
+    """
+    A smooth function f: [0, 1] -> [0, 1] such that
+    f(0) = 0, f(1) = 1, f(t) = 0.5
+    """
+
+    # Find parameter k such that sigmoid(k*(x - t)) maps t to 0.5 and [0,1] to [0,1]
+    # This transformation ensures f(0)=0 and f(1)=1
+    k = 10 #np.log(10) / (0.5 - t) if t != 0.5 else 10  # Adjustable if t=0.5
+
+    # Sigmoid centered at t
+    s = lambda x: 1 / (1 + np.exp(-k * (x - t)))
+
+    # Normalize so s(0)=0 and s(1)=1
+    s0 = s(0)
+
+    s1 = s(1)
+    return (s(x) - s0) / (s1 - s0)
+
 class TestDataset(Dataset):
     """Dataset for loading processed test images."""
     
@@ -133,8 +152,10 @@ def predict_model():
                     tta_probs.append(probabilities.cpu().numpy())
                 avg_prob = np.mean(tta_probs, axis=0)
                 probs.append(avg_prob)
-        #probs = (np.concatenate(probs) > checkpoint['f1_opt_threshold']) * 1
-        probs = np.concatenate(probs)
+        print("F1 opt threshold: ",checkpoint['f1_opt_threshold'])
+        probs = (np.concatenate(probs) > checkpoint['f1_opt_threshold']) * 1
+        #probs = np.array([anchored_sigmoid(x, checkpoint['f1_opt_threshold']) for x in np.concatenate(probs)])
+        #probs = np.concatenate(probs)
         all_probs.append(probs)
     # Average probabilities across all models
     avg_probs = np.mean(np.stack(all_probs, axis=0), axis=0)
