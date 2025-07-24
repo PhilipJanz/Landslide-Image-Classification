@@ -15,11 +15,11 @@ def objective(trial):
     # Define hyperparameter search space
     fc_units = trial.suggest_categorical('fc_units', [64, 128, 256])
     fusioned_kernel_units = trial.suggest_categorical('fusioned_kernel_units', [64, 128, 256])
-    dropout = trial.suggest_float('dropout', 0.1, 0.6)
-    final_dropout = trial.suggest_float('final_dropout', 0.1, 0.6)
-    lr = trial.suggest_loguniform('lr', 1e-4, 1e-2)
-    weight_decay = trial.suggest_loguniform('weight_decay', 5e-6, 5e-4)
-    bce_weight = trial.suggest_float('bce_weight', 1, 6)
+    dropout = trial.suggest_float('dropout', 0.0, 0.6)
+    final_dropout = trial.suggest_float('final_dropout', 0.0, 0.6)
+    lr = trial.suggest_float('lr', 1e-4, 1e-2, log=True)
+    weight_decay = trial.suggest_float('weight_decay', 5e-6, 5e-4, log=True)
+    bce_weight = 2 #trial.suggest_float('bce_weight', 1, 6)
     batch_size = trial.suggest_categorical('batch_size', [32, 64, 128])
 
     fold_metrics = train_model(fc_units=fc_units, fusioned_kernel_units=fusioned_kernel_units,
@@ -29,7 +29,7 @@ def objective(trial):
     return np.mean([m["val_f1"] for m in fold_metrics])
 
 
-sampler = optuna.samplers.TPESampler(n_startup_trials=25, multivariate=True,
+sampler = optuna.samplers.TPESampler(n_startup_trials=20, multivariate=True,
                                      warn_independent_sampling=False, seed=SEED)
 study = optuna.create_study(
     storage="sqlite:///optuna_study.db",  # Specify the storage URL here.
