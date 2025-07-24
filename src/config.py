@@ -39,14 +39,14 @@ SUBMISSIONS_DIR = OUTPUT_DIR / "submissions"
 
 # band information after preprocessing
 BAND_DESCRIPTIONS = [
-    "Red", "Green", "Blue", "Near Infrared",
+    "Cloud Map", "Red", "Green", "Blue", "Near Infrared",
     "Descending VV post", "Descending VH post",
     "Descending VV pre", "Descending VH pre",
     "Ascending VV post", "Ascending VH post",
     "Ascending VV pre", "Ascending VH pre"
 ]
 BAND_LABELS = [
-    "red", "green", "blue", "nir",
+    "cloud", "red", "green", "blue", "nir",
     "desc_VV_post", "desc_VH_post",
     "desc_VV_pre", "desc_VH_pre",
     "asc_VV_post", "asc_VH_post",
@@ -57,7 +57,7 @@ BAND_LABELS = [
 #                        Model & Training Hyperparameters                      #
 # ---------------------------------------------------------------------------- #
 # Reproducibility
-SEED = 37
+SEED = 42
 
 # Image processing settings
 IMAGE_HEIGHT = 64
@@ -73,4 +73,4 @@ EPOCHS = 100
 DEVICE = "cuda"  # or "cpu"
 
 # Name for the saved model file
-MODEL_NAME = "landslide_MMCNN_V5"
+MODEL_NAME = "landslide_MMCNN_V5_"

@@ -81,7 +81,7 @@ def process_dataset(input_dir, output_dir, dataset_name):
         img = np.load(file_path, allow_pickle=False)
         if img is None:
             continue
-        if img.shape != (IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_CHANNELS):
+        if img.shape != (64, 64, 12):
             print(f"Skipping {file_path.name}: wrong shape {img.shape}")
             continue
         normalized_img = normalize_image(img)

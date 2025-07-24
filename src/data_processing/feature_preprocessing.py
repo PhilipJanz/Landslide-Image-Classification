@@ -44,7 +44,11 @@ def extract_features(img):
     for key, arr in img_dict.items():
         mean_val = np.mean(arr)
         std_val = np.std(arr)
-        features.extend([mean_val, std_val])
-        feature_names.extend([f"{key}_mean", f"{key}_std"])
+        max_val = np.max(arr)
+        min_val = np.min(arr)
+        q9_val = np.quantile(arr, .9)
+        q1_val = np.quantile(arr, .1)
+        features.extend([mean_val, std_val, max_val, min_val, q1_val, q9_val])
+        feature_names.extend([f"{key}_mean", f"{key}_std", f"{key}_max", f"{key}_min", f"{key}_q1", f"{key}_q9"])
 
     return features, feature_names

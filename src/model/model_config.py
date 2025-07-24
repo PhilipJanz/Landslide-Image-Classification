@@ -1,6 +1,20 @@
 from model.alternative_approaches.vit_architecture import ViT, MultiModalViT
-from model.cnn_architecture import MultiModalCNN
+from model.fpn_architecture import MultiModalCNN
 import config
+
+
+XGB_PARAMS = {
+    'max_depth': 8,
+    'learning_rate': 1e-1,
+    'subsample': .85,
+    'colsample_bytree': .98,
+    'gamma':2e-9,
+    'alpha': 1e-5,
+    "lambda": 0,
+    "n_estimators": 500,
+    'objective': 'binary:logistic'
+    }
+
 
 def get_vit_model():
     """
@@ -58,3 +72,5 @@ def get_multimodal_cnn_model(fc_units=256, fusioned_kernel_units=128, dropout=0.
 
 # Example usage:
 # model = get_multimodal_cnn_model(fc_units=128, dropout=0.3, final_dropout=0.5)
+
+

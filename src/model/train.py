@@ -22,7 +22,7 @@ if src_path not in sys.path:
     sys.path.append(src_path)
 
 import config
-from model.architecture_config import get_multimodal_cnn_model
+from model.model_config import get_multimodal_cnn_model
 from utils.augmentation import DataAugmentationTransform
 from utils.visualizations import create_training_plots, create_summary_plot
 from utils.dataset_loader import LandslideDataset, TransformedSubset
@@ -143,7 +143,7 @@ def validate_epoch(model, dataloader, criterion, device, threshold=0.5):
     return accuracy, f1, recall, precision, all_predictions, all_targets, threshold
 
 
-#@track_emissions()
+@track_emissions()
 def train_model(fc_units=256, 
                 fusioned_kernel_units=128,
                 dropout=0.0, 

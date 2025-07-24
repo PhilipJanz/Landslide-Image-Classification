@@ -14,27 +14,9 @@ if src_path not in sys.path:
     sys.path.append(src_path)
 
 import config
-from model.architecture_config import get_multimodal_cnn_model
+from model.model_config import get_multimodal_cnn_model
 from utils.augmentation import DataAugmentationTransform
-
-def anchored_sigmoid(x, t):
-    """
-    A smooth function f: [0, 1] -> [0, 1] such that
-    f(0) = 0, f(1) = 1, f(t) = 0.5
-    """
-
-    # Find parameter k such that sigmoid(k*(x - t)) maps t to 0.5 and [0,1] to [0,1]
-    # This transformation ensures f(0)=0 and f(1)=1
-    k = 10 #np.log(10) / (0.5 - t) if t != 0.5 else 10  # Adjustable if t=0.5
-
-    # Sigmoid centered at t
-    s = lambda x: 1 / (1 + np.exp(-k * (x - t)))
-
-    # Normalize so s(0)=0 and s(1)=1
-    s0 = s(0)
-
-    s1 = s(1)
-    return (s(x) - s0) / (s1 - s0)
+from utils.pred_postprocessing import anchored_sigmoid
 
 class TestDataset(Dataset):
     """Dataset for loading processed test images."""
@@ -160,14 +142,19 @@ def predict_model():
         #probs = np.array([anchored_sigmoid(x, checkpoint['f1_opt_threshold']) for x in probs])
         all_probs.append(probs)
     # Average probabilities across all models
-    avg_probs = np.nanmean(np.stack(all_probs, axis=0), axis=0)
+    mean_prediction = np.nanmean(np.stack(all_probs, axis=0), axis=0)
+    std_prediction =  np.nanstd(np.stack(all_probs, axis=0), axis=0)
+    binary_prediction = (mean_prediction > 0.5).astype(float)
     # Get image IDs in order
     all_image_ids = [img_id for _, img_id in test_dataset]
-    # Convert to binary predictions
-    predictions = (avg_probs > 0.5).astype(float)
+    prediction_df = pd.DataFrame({
+        'ID': all_image_ids,
+        'pred': mean_prediction,
+        "std": std_prediction
+    })
     submission_df = pd.DataFrame({
         'ID': all_image_ids,
-        'label': predictions
+        'label': binary_prediction
     })
     # check for negatives from the feature model
     feature_model_preds = pd.read_csv(config.PROCESSED_FEATURE_PATH / "train_prediction.csv")
@@ -180,14 +167,15 @@ def predict_model():
     
     config.SUBMISSIONS_DIR.mkdir(parents=True, exist_ok=True)
     model_name_without_ext = config.MODEL_NAME.replace('.pth', '')
-    submission_file_path = config.SUBMISSIONS_DIR / f"submission_{model_name_without_ext}.csv"
+
+    prediction_df.to_csv(model_dir / f"prediction.csv", index=False)
+    submission_file_path = config.SUBMISSIONS_DIR / f"submission_{config.MODEL_NAME}.csv"
     submission_df.to_csv(submission_file_path, index=False)
     print(f"Submission file saved to {submission_file_path}")
     print(f"\nPrediction Statistics:")
-    print(f"Total predictions: {len(predictions)}")
-    print(f"Positive predictions (landslide): {sum(predictions)}")
-    print(f"Negative predictions (no landslide): {len(predictions) - sum(predictions)}")
-    print(f"Positive rate: {sum(predictions) / len(predictions) * 100:.2f}%")
+    print(f"Total predictions: {len(binary_prediction)}")
+    print(f"Positive predictions (landslide): {sum(binary_prediction)}")
+    print(f"Positive rate: {sum(binary_prediction) / len(binary_prediction) * 100:.2f}%")
 
 if __name__ == "__main__":
     predict_model()

@@ -13,7 +13,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from config import PROCESSED_FEATURE_PATH, TRAIN_CSV_PATH, SEED
 
-TARGET_PRECISION = 0.995
+TARGET_PRECISION = 1
 
 # Assume features and labels are loaded
 # Load features
@@ -47,9 +47,8 @@ for fold, (train_idx, val_idx) in enumerate(skf.split(X, y)):
     val_probs = clf.predict_proba(X_val)[:, 1]
     precision, recall, thresholds_fold = precision_recall_curve(y_val, val_probs)
     # Find threshold for desired precision
-    threshold = 1
-    for p, r, t in zip(precision[1:], recall[1:], thresholds_fold):
-        if r <= TARGET_PRECISION:
+    for i, (r, t) in enumerate(zip(recall[1:], thresholds_fold)):
+        if r < TARGET_PRECISION:
             threshold = t
             break
     oof_pred[val_idx] = (val_probs >= threshold).astype(int)
