@@ -43,7 +43,7 @@ def get_multimodal_vit_model():
         mlp_hidden_dim=128
     )
 
-def get_multimodal_cnn_model(fc_units=128, fusioned_kernel_units=128, dropout=0.3, final_dropout=0.3):
+def get_multimodal_cnn_model(fc_units=256, fusioned_kernel_units=128, dropout=0.0, final_dropout=0.25):
     """
     Returns a MultiModalCNN model instance for multi-modal (optical + SAR) input (PyTorch version).
     Args:

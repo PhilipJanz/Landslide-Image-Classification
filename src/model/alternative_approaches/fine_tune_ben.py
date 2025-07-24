@@ -24,7 +24,7 @@ if src_path not in sys.path:
     sys.path.append(src_path)
 
 import config
-from model.ben_architecture import BigEarthNetFM, LoRAConv2d
+from src.model.alternative_approaches.ben_architecture import BigEarthNetFM, LoRAConv2d
 from utils.augmentation import DataAugmentationTransform
 from utils.visualizations import create_training_plots, create_summary_plot
 from utils.dataset_loader import LandslideDataset, TransformedSubset

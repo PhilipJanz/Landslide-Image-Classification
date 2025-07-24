@@ -144,12 +144,12 @@ def validate_epoch(model, dataloader, criterion, device, threshold=0.5):
 
 
 #@track_emissions()
-def train_model(fc_units=128, 
+def train_model(fc_units=256, 
                 fusioned_kernel_units=128,
-                dropout=0.35, 
-                final_dropout=0.15, 
+                dropout=0.0, 
+                final_dropout=0.25, 
                 lr=config.LEARNING_RATE, 
-                weight_decay=5e-4, 
+                weight_decay=4e-4, 
                 bce_weight=2.0,
                 batch_size=config.BATCH_SIZE,
                 show_process=True, 
@@ -174,7 +174,7 @@ def train_model(fc_units=128,
     )
     total_size = len(dataset)
     indices = np.arange(total_size)
-    kf = KFold(n_splits=5, shuffle=True, random_state=config.SEED)
+    kf = KFold(n_splits=10, shuffle=True, random_state=config.SEED)
 
     # Prepare model directory
     model_dir = config.MODEL_DIR / config.MODEL_NAME

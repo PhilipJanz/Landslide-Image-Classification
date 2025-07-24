@@ -150,15 +150,17 @@ def predict_model():
                     outputs = model(augmented_images)
                     probabilities = torch.sigmoid(outputs).squeeze()
                     tta_probs.append(probabilities.cpu().numpy())
+                undeterminded_classifier = np.std(tta_probs, axis=0) > 0.15
                 avg_prob = np.mean(tta_probs, axis=0)
+                avg_prob[undeterminded_classifier] = np.nan
                 probs.append(avg_prob)
+        probs = np.concatenate(probs)
         print("F1 opt threshold: ",checkpoint['f1_opt_threshold'])
-        probs = (np.concatenate(probs) > checkpoint['f1_opt_threshold']) * 1
-        #probs = np.array([anchored_sigmoid(x, checkpoint['f1_opt_threshold']) for x in np.concatenate(probs)])
-        #probs = np.concatenate(probs)
+        probs = (probs > checkpoint['f1_opt_threshold']) * 1
+        #probs = np.array([anchored_sigmoid(x, checkpoint['f1_opt_threshold']) for x in probs])
         all_probs.append(probs)
     # Average probabilities across all models
-    avg_probs = np.mean(np.stack(all_probs, axis=0), axis=0)
+    avg_probs = np.nanmean(np.stack(all_probs, axis=0), axis=0)
     # Get image IDs in order
     all_image_ids = [img_id for _, img_id in test_dataset]
     # Convert to binary predictions

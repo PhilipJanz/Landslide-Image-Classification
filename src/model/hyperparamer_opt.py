@@ -17,8 +17,8 @@ def objective(trial):
     fusioned_kernel_units = trial.suggest_categorical('fusioned_kernel_units', [64, 128, 256])
     dropout = trial.suggest_float('dropout', 0.0, 0.6)
     final_dropout = trial.suggest_float('final_dropout', 0.0, 0.6)
-    lr = trial.suggest_loguniform('lr', 1e-4, 1e-2)
-    weight_decay = trial.suggest_loguniform('weight_decay', 5e-6, 5e-4)
+    lr = trial.suggest_float('lr', 1e-4, 1e-2, log=True)
+    weight_decay = trial.suggest_float('weight_decay', 5e-6, 5e-4, log=True)
     bce_weight = 2 #trial.suggest_float('bce_weight', 1, 6)
     batch_size = trial.suggest_categorical('batch_size', [32, 64, 128])
 
