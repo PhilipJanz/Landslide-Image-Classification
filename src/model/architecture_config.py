@@ -1,5 +1,5 @@
 from model.alternative_approaches.vit_architecture import ViT, MultiModalViT
-from model.cnn_architecture import MultiModalCNN
+from model.fpn_architecture import MultiModalCNN
 import config
 
 def get_vit_model():
