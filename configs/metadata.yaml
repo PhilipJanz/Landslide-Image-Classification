@@ -1,0 +1,77 @@
+sentinel-2:
+  band_order:
+    - red
+    - green
+    - blue
+    - nir
+  rgb_indices:
+    - 0
+    - 1
+    - 2
+  gsd: 10
+  bands:
+    mean:
+      red: 1552.
+      green: 1355.
+      blue: 1105.
+      nir: 2743.
+    std:
+      red: 1888.
+      green: 1757.
+      blue: 1809.
+      nir: 1742.
+    wavelength:
+      red: 0.665
+      green: 0.56
+      blue: 0.493
+      nir: 0.842
+sentinel-1:
+  band_order:
+    - vv
+    - vh
+  gsd: 10
+  bands:
+    mean:
+      vv: 0.123273
+      vh: 0.027337
+    std:
+      vv: 1.492154
+      vh: 0.122182
+    wavelength:
+      vv: 3.5
+      vh: 4.0
+comb:
+  band_order:
+    - red
+    - green
+    - blue
+    - nir
+    - vv
+    - vh
+  rgb_indices:
+    - 0
+    - 1
+    - 2
+  gsd: 10
+  bands:
+    mean:
+      red: 1552.
+      green: 1355.
+      blue: 1105.
+      nir: 2743.
+      vv: 0.123273
+      vh: 0.027337
+    std:
+      red: 1888.
+      green: 1757.
+      blue: 1809.
+      nir: 1742.
+      vv: 1.492154
+      vh: 0.122182
+    wavelength:
+      red: 0.665
+      green: 0.56
+      blue: 0.493
+      nir: 0.842
+      vv: 3.5
+      vh: 4.0

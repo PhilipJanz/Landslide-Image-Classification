@@ -49,7 +49,7 @@ def normalize_image(img):
     band_stack = np.stack([((img[:, :, i] - means[band_names[i]]) / stds[band_names[i]]) 
                        for i in range(img.shape[2])], axis=2)
     # add rule based cloud mask
-    cloud_mask = (band_stack[:,:,[0]] < 6) * 1
+    cloud_mask = (band_stack[:,:,[0]] > 6) * 1
     #band_stack[:, :, :4] = band_stack[:, :, :4] * cloud_mask
     input_tensor = np.concat([cloud_mask, band_stack], axis=2)
 

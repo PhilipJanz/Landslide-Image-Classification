@@ -49,7 +49,10 @@ class LandslideDataset(Dataset):
             self.df = self.df[[id not in obvious_neg_image_ids for id in self.df.ID]]
 
         self.image_ids = self.df['ID'].values
-        self.labels = self.df['label'].values.astype(np.float32)
+        if "label" in self.df.columns:
+            self.labels = self.df['label'].values.astype(np.float32)
+        else:
+            self.labels = np.empty(len(self.df))
         
         # Load all images into memory at once
         self.images = []
