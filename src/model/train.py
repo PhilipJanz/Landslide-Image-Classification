@@ -14,6 +14,7 @@ import math
 from sklearn.model_selection import KFold
 from codecarbon import track_emissions
 
+
 #warnings.filterwarnings('ignore')
 
 # Add src to Python path
@@ -22,7 +23,8 @@ if src_path not in sys.path:
     sys.path.append(src_path)
 
 import config
-from model.architecture_config import get_multimodal_cnn_model
+from model.model_config import get_multimodal_cnn_model
+from model.experiment import ImprovedMultiModalFPN
 from utils.augmentation import DataAugmentationTransform
 from utils.visualizations import create_training_plots, create_summary_plot
 from utils.dataset_loader import LandslideDataset, TransformedSubset
@@ -60,7 +62,7 @@ def calculate_metrics(y_true, y_pred, threshold=.5):
     if torch.is_tensor(y_pred):
         y_pred = y_pred.cpu().numpy()
     
-    if not threshold: # optimize based on f1
+    if threshold is None: # optimize based on f1
         threshold_ls = np.arange(20, 81) / 100
         f1_ls = [f1_score(y_true, (y_pred > threshold).astype(int), average='binary') for threshold in threshold_ls]
         threshold = threshold_ls[np.argmax(f1_ls)]
@@ -149,8 +151,8 @@ def train_model(fc_units=256,
                 dropout=0.0, 
                 final_dropout=0.25, 
                 lr=config.LEARNING_RATE, 
-                weight_decay=4e-4, 
-                bce_weight=2.0,
+                weight_decay=1e-4, 
+                bce_weight=1.0,
                 batch_size=config.BATCH_SIZE,
                 show_process=True, 
                 save_model=True):

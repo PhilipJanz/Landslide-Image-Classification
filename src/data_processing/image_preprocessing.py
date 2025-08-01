@@ -49,7 +49,7 @@ def normalize_image(img):
     band_stack = np.stack([((img[:, :, i] - means[band_names[i]]) / stds[band_names[i]]) 
                        for i in range(img.shape[2])], axis=2)
     # add rule based cloud mask
-    cloud_mask = (band_stack[:,:,[0]] < 6) * 1
+    cloud_mask = (band_stack[:,:,[0]] > 6) * 1
     #band_stack[:, :, :4] = band_stack[:, :, :4] * cloud_mask
     input_tensor = np.concat([cloud_mask, band_stack], axis=2)
 
@@ -81,7 +81,7 @@ def process_dataset(input_dir, output_dir, dataset_name):
         img = np.load(file_path, allow_pickle=False)
         if img is None:
             continue
-        if img.shape != (IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_CHANNELS):
+        if img.shape != (64, 64, 12):
             print(f"Skipping {file_path.name}: wrong shape {img.shape}")
             continue
         normalized_img = normalize_image(img)

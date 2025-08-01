@@ -23,8 +23,8 @@ if src_path not in sys.path:
     sys.path.append(src_path)
 
 import config
-from model.architecture_config import get_multimodal_cnn_model
-from src.model.fpn_architecture import SARPretrainModel, OpticalPretrainModel
+from model.model_config import get_multimodal_cnn_model
+from model.fpn_architecture import SARPretrainModel, OpticalPretrainModel
 from utils.augmentation import DataAugmentationTransform
 from utils.visualizations import create_training_plots, create_summary_plot
 

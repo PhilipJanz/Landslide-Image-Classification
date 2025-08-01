@@ -74,6 +74,7 @@ class MultiModalCNN(nn.Module):
 
     def forward(self, x):
         # x: (B, 12, 64, 64)
+        # filter visual spectrum based on cloud mask
         x[:, 1:5, :, :] = x[:, 1:5, :, :] - (x[:, 1:5, :, :] * x[:, [0], :, :])
         x_opt = self.optical_branch(x[:, 0:5, :, :])      # (B, 32, 32, 32)
         x_sar_desc = self.sar_desc_branch(x[:, 5:9, :, :])# (B, 32, 32, 32)

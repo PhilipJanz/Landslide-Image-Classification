@@ -5,9 +5,13 @@ __pycache__/
 # Ignore large data files
 *.npy
 
+# Ignore torch files
+*.pt
+
 # Ignore model files
 *.pth
 *.keras
+*.ckpt
 models/*
 
 # Ignore submission/output files
