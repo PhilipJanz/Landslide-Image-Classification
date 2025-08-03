@@ -11,7 +11,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 RAW_DATA_DIR = DATA_DIR / "01_raw"
 PROCESSED_DATA_DIR = DATA_DIR / "02_processed"
-EMBEDDING_DATA_DIR = DATA_DIR / "03_embeddings"
 
 
 # Paths to the separate train and test image folders
