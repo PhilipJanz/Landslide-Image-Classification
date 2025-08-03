@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import pandas as pd
 from pathlib import Path
 import sys
 from tqdm import tqdm
@@ -50,12 +51,13 @@ def normalize_image(img):
                        for i in range(img.shape[2])], axis=2)
     # add rule based cloud mask
     cloud_mask = (band_stack[:,:,[0]] > 6) * 1
+    cloud_coverage = np.mean(cloud_mask)
     #band_stack[:, :, :4] = band_stack[:, :, :4] * cloud_mask
     input_tensor = np.concat([cloud_mask, band_stack], axis=2)
 
     normalized = input_tensor.astype(np.float32)
 
-    return normalized
+    return normalized, cloud_coverage
 
 def process_dataset(input_dir, output_dir, dataset_name):
     """
@@ -76,6 +78,7 @@ def process_dataset(input_dir, output_dir, dataset_name):
     # list of features
     feature_ls = []
     feature_labels = None
+    cloud_coverage_ls = []
     processed_count = 0
     for file_path in tqdm(image_files, desc=f"Processing {dataset_name}"):
         img = np.load(file_path, allow_pickle=False)
@@ -84,13 +87,14 @@ def process_dataset(input_dir, output_dir, dataset_name):
         if img.shape != (64, 64, 12):
             print(f"Skipping {file_path.name}: wrong shape {img.shape}")
             continue
-        normalized_img = normalize_image(img)
+        normalized_img, cloud_coverage = normalize_image(img)
         output_path = output_dir / file_path.name
         file_names.append(file_path.name[:-4])
         np.save(output_path, normalized_img.astype(np.float32))
         # calculate features for stage-1 decision-tree model
         features, feature_labels = extract_features(normalized_img)
         feature_ls.append(features)
+        cloud_coverage_ls.append(cloud_coverage)
         processed_count += 1
     # Save features as CSV
     if feature_ls and feature_labels is not None:
@@ -99,7 +103,10 @@ def process_dataset(input_dir, output_dir, dataset_name):
         df.index = file_names
         df.to_csv(csv_path, index=True)
         print(f"Saved features to {csv_path}")
+    # save cloud coverage
+    pd.DataFrame({"ID": file_names, "cloud_coverage": cloud_coverage_ls}).to_csv(PROCESSED_DATA_DIR / f"{dataset_name}_cloud_coverage.csv", index=False)
     print(f"Processed {processed_count} images for {dataset_name} dataset")
+    print(f"Average cloud coverage: {np.mean(cloud_coverage_ls):.4f}")
 
 def main():
     """Main preprocessing pipeline using BENv2_utils statistics."""

@@ -15,7 +15,6 @@ if src_path not in sys.path:
 
 import config
 from model.model_config import get_multimodal_cnn_model
-from model.experiment import ImprovedMultiModalFPN
 from utils.augmentation import DataAugmentationTransform
 from utils.pred_postprocessing import anchored_sigmoid
 
@@ -118,8 +117,7 @@ def predict_model():
     ]
     for model_path in model_paths:
         print(f"Loading model from {model_path}")
-        #model = get_multimodal_cnn_model(dropout=0.0, final_dropout=0.0).to(device)
-        model = ImprovedMultiModalFPN(fc_units=256, final_dropout=0).to(device)
+        model = get_multimodal_cnn_model(dropout=0.0, final_dropout=0.0).to(device)
         checkpoint = torch.load(model_path, map_location=device, weights_only=False)
         model.load_state_dict(checkpoint['model_state_dict'])
         model.eval()
@@ -141,7 +139,7 @@ def predict_model():
         probs = np.concatenate(probs)
         print("F1 opt threshold: ", checkpoint['f1_opt_threshold'])
         #probs = (probs > checkpoint['f1_opt_threshold']) * 1
-        #probs = np.array([anchored_sigmoid(x, checkpoint['f1_opt_threshold']) for x in probs])
+        probs = np.array([anchored_sigmoid(x, checkpoint['f1_opt_threshold']) for x in probs])
         all_probs.append(probs)
     # Average probabilities across all models
     mean_prediction = np.nanmean(np.stack(all_probs, axis=0), axis=0)

@@ -10,7 +10,7 @@ if src_path not in sys.path:
 
 import config
 
-models = ["landslide_MMCNN_V6",  "landslide_MMCNN_V5_"]
+models = ["landslide_MMCNN_final42",  "landslide_MMCNN_sar_final42"]
 
 dfs = {}
 for model_name in models:
@@ -27,39 +27,35 @@ for model_name, df in dfs.items():
     ensemble_df[model_name] = df["pred"].values
     std_df[model_name] = df["std"].values
 
-# make weights based on std
-std_df = std_df.values
-# first: convert uncertainty to confidence
-confidence_mtx = 1 / (std_df + 1e-6)
-# second: standardize overall confidence (XGB seems overall much more confident)
-confidence_mtx = confidence_mtx / confidence_mtx.mean(axis=0)
-# third: make weight for each images
-confidence_mtx = (confidence_mtx.T / confidence_mtx.sum(axis=1)).T
+# predefine final labels with prediction of full model
+ensemble_df["label"] = (ensemble_df[models[0]] > 0.5) * 1
 
-# Compare predictions (rounded to binary for agreement)
-print("Agreement matrix (rounded):")
-print(ensemble_df.round().value_counts().reset_index(name="count"))
+# load cloud coverage data
+cc_df = pd.read_csv(config.PROCESSED_DATA_DIR / f"test_cloud_coverage.csv")
+assert all(dfs[models[0]].ID.values == cc_df.ID.values)
+# set threshold on TODO
+cc_threshold = .1
+clouded_idx = cc_df.cloud_coverage > cc_threshold
+print(f"Marked {np.sum(clouded_idx)} out of {len(clouded_idx)} of test-images as significantly cloud covered.")
 
-# Weighted Ensemble:
-weighted_ensemble_df = ensemble_df  #* confidence_mtx 
-ensemble_df["ensemble"] = (weighted_ensemble_df.sum(axis=1) > 0.5).astype(int)
-"""
-ensemble_df["ensemble"] = ensemble_df["landslide_MMCNN_V5_"]
-xgb_conf_loc = (std_df["landslide_MMCNN_V5_"] > 0.15) & (std_df["XGB_V0"] < 0.01)
-print(f"XGB updates {np.sum(xgb_conf_loc)} predictions")
-ensemble_df["ensemble"][xgb_conf_loc] = ensemble_df["XGB_V0"][xgb_conf_loc]
-ensemble_df["ensemble"] = (ensemble_df["ensemble"] > 0.5) * 1
-
-"""
+clouded_ensemble_df = ensemble_df.reset_index()[clouded_idx]
+pred_mtx = (clouded_ensemble_df.values[:, [1, 2]] > 0.5) * 1
+diff_pred_idx = pred_mtx[:, 0] != pred_mtx[:, 1]
+print(f"... the models disagree in {np.sum(diff_pred_idx)} cases.")
+confident_pred_idx = std_df[models[1]].values[clouded_idx][diff_pred_idx] < .05
+print(f"... the cloud models is confident in {np.sum(confident_pred_idx)} cases.\n")
+switch_ids = clouded_ensemble_df[diff_pred_idx][confident_pred_idx].ID.values
+ensemble_df.loc[switch_ids, "label"] = (ensemble_df.loc[switch_ids, "label"] - 1) * (-1)
+assert np.all(ensemble_df.loc[switch_ids, "label"].values == pred_mtx[diff_pred_idx, 1][confident_pred_idx])
 
 # Save ensembled predictions
-output_path = Path(config.SUBMISSIONS_DIR / f"ensemble_prediction_{"_".join(models)}.csv")
+output_path = Path(config.SUBMISSIONS_DIR / f"cloudy_prediction_{"_".join(models)}.csv")
 output_path.parent.mkdir(parents=True, exist_ok=True)
-ensemble_df[["ensemble"]].rename(columns={"ensemble": "label"}).to_csv(
+ensemble_df[["label"]].to_csv(
     output_path, index_label="ID"
 )
 print(f"Ensembled predictions saved to {output_path}")
 print(f"\nPrediction Statistics:")
-print(f"Total predictions: {len(ensemble_df["ensemble"])}")
-print(f"Positive predictions (landslide): {sum(ensemble_df["ensemble"])}")
-print(f"Positive rate: {sum(ensemble_df["ensemble"]) / len(ensemble_df["ensemble"]) * 100:.2f}%")
+print(f"Total predictions: {len(ensemble_df["label"])}")
+print(f"Positive predictions (landslide): {sum(ensemble_df["label"])}")
+print(f"Positive rate: {sum(ensemble_df["label"]) / len(ensemble_df["label"]) * 100:.2f}%")

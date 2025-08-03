@@ -27,11 +27,11 @@ class MultiModalCNN(nn.Module):
     def __init__(self, fc_units=128, fusioned_kernel_units=64, dropout=0.4, final_dropout=0.4):
         super().__init__()
         self.optical_branch = CNNBranch(5, dropout)
-        self.sar_desc_branch = CNNBranch(4, dropout)
-        self.sar_asc_branch = CNNBranch(4, dropout)
+        #self.sar_desc_branch = CNNBranch(4, dropout)
+        self.sar_branch = CNNBranch(4, dropout)
         
         self.conv2 = nn.Sequential(
-            nn.Conv2d(96, 64, kernel_size=3, padding=1),           # 64x64
+            nn.Conv2d(32 * 3, 64, kernel_size=3, padding=1),           # 64x64
             nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.MaxPool2d(2),                                        # 32x32
@@ -73,13 +73,13 @@ class MultiModalCNN(nn.Module):
         )
 
     def forward(self, x):
-        # x: (B, 12, 64, 64)
+        # x: (B, 13, 64, 64)
         # filter visual spectrum based on cloud mask
-        x[:, 1:5, :, :] = x[:, 1:5, :, :] - (x[:, 1:5, :, :] * x[:, [0], :, :])
+        #x[:, 1:5, :, :] = x[:, 1:5, :, :] - (x[:, 1:5, :, :] * x[:, [0], :, :])
         x_opt = self.optical_branch(x[:, 0:5, :, :])      # (B, 32, 32, 32)
-        x_sar_desc = self.sar_desc_branch(x[:, 5:9, :, :])# (B, 32, 32, 32)
-        x_sar_asc = self.sar_asc_branch(x[:, 9:, :, :]) # (B, 32, 32, 32)
-        c1 = torch.cat([x_opt, x_sar_desc, x_sar_asc], dim=1)  # (B, 96, 32, 32)
+        x_sar_desc = self.sar_branch(x[:, 5:9, :, :]) # (B, 32, 32, 32)
+        x_sar_asc = self.sar_branch(x[:, 9:, :, :]) # (B, 32, 32, 32)
+        c1 = torch.cat([x_opt, x_sar_desc, x_sar_asc], dim=1)  # (B, 96, 32, 32) 
 
         # Bottom-up pathway
         c2 = self.conv2(c1)    # 16x16
