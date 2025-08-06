@@ -14,7 +14,6 @@ import math
 from sklearn.model_selection import KFold
 from codecarbon import track_emissions
 
-
 # Add src to Python path
 src_path = str(Path(__file__).parent.parent)
 if src_path not in sys.path:
@@ -210,11 +209,17 @@ def train_model(fc_units=256,
             shuffle=False,
             num_workers=0
         )
-        model = get_multimodal_cnn_model(fc_units=fc_units, fusioned_kernel_units=fusioned_kernel_units, dropout=dropout, final_dropout=final_dropout).to(device)
+
+        # init model
+        model = MultiModalFPN(fc_units=fc_units, fusioned_kernel_units=fusioned_kernel_units, dropout=dropout, final_dropout=final_dropout).to(device)
         total_params = sum(p.numel() for p in model.parameters())
         print(f"Total parameters: {total_params:,}")
+
+        # define loss function
         pos_weight = torch.tensor([bce_weight]).to(device)
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+
+        # define optimizer
         optimizer = optim.Adam(
             model.parameters(),
             lr=lr,
@@ -227,6 +232,7 @@ def train_model(fc_units=256,
             total_epochs=config.EPOCHS,
             min_lr=1e-6
         )
+
         train_losses, val_losses, train_accuracies, val_accuracies, train_f1s, val_f1s = [], [], [], [], [], []
         for epoch in range(config.EPOCHS):
             if show_process:
@@ -284,7 +290,6 @@ def train_model(fc_units=256,
                 "batch_size": batch_size,
                 "warmup_epochs": warmup_epochs,
                 "total_epochs": config.EPOCHS,
-                "min_lr": 1e-6,
                 "optimizer": "Adam",
                 "criterion": "BCEWithLogitsLoss",
                 "device": config.DEVICE,
@@ -301,8 +306,7 @@ def train_model(fc_units=256,
             'val_recall': val_recall,
             'val_precision': val_precision
         })
-        
-    
+
     # Calculate and display average metrics across all folds
     print("\n" + "="*80)
     print("CROSS-VALIDATION RESULTS SUMMARY")

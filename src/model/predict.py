@@ -117,8 +117,8 @@ def predict_model():
     ]
     for model_path in model_paths:
         print(f"Loading model from {model_path}")
-        model = get_multimodal_cnn_model(dropout=0.0, final_dropout=0.0).to(device)
         checkpoint = torch.load(model_path, map_location=device, weights_only=False)
+        model = MultiModalFPN(dropout=0.0, final_dropout=0.0).to(device) # TODO load model with params
         model.load_state_dict(checkpoint['model_state_dict'])
         model.eval()
         probs = []
@@ -132,9 +132,10 @@ def predict_model():
                     outputs = model(augmented_images)
                     probabilities = torch.sigmoid(outputs).squeeze()
                     tta_probs.append(probabilities.cpu().numpy())
-                undeterminded_classifier = np.std(tta_probs, axis=0) > 0.15
+                # identify strong inconsistency between prediction on augmented images and return nan in those cases
+                unconfident_classifier = np.std(tta_probs, axis=0) > 0.15
                 avg_prob = np.mean(tta_probs, axis=0)
-                avg_prob[undeterminded_classifier] = np.nan
+                avg_prob[unconfident_classifier] = np.nan
                 probs.append(avg_prob)
         probs = np.concatenate(probs)
         print("F1 opt threshold: ", checkpoint['f1_opt_threshold'])

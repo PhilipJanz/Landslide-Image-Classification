@@ -57,7 +57,7 @@ BAND_LABELS = [
 #                        Model & Training Hyperparameters                      #
 # ---------------------------------------------------------------------------- #
 # Reproducibility
-SEED = 37
+SEED = 42
 
 # Image processing settings
 IMAGE_HEIGHT = 64
@@ -69,8 +69,7 @@ BATCH_SIZE = 32
 LEARNING_RATE = 1e-3
 EPOCHS = 100
 
-
 DEVICE = "cuda"  # or "cpu"
 
 # Name for the saved model file
-MODEL_NAME = "landslide_MMCNN_final37"
+MODEL_NAME = "landslide_MMCNN_final42"

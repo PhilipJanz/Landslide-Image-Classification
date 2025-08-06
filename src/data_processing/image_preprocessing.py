@@ -10,9 +10,7 @@ warnings.filterwarnings('ignore')
 # Add src to path to import config
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from config import TRAIN_IMAGE_DIR, TEST_IMAGE_DIR, PROCESSED_DATA_DIR, IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_CHANNELS, SEED, PROCESSED_FEATURE_PATH
-import pandas as pd
 from feature_preprocessing import extract_features
-# Import BENv2_utils for statistics
 from utils import BENv2_utils
 
 
@@ -49,10 +47,9 @@ def normalize_image(img):
 
     band_stack = np.stack([((img[:, :, i] - means[band_names[i]]) / stds[band_names[i]]) 
                        for i in range(img.shape[2])], axis=2)
-    # add rule based cloud mask
+    # add rule based cloud mask -> high 'red' value indicates cloud (or snow)
     cloud_mask = (band_stack[:,:,[0]] > 6) * 1
     cloud_coverage = np.mean(cloud_mask)
-    #band_stack[:, :, :4] = band_stack[:, :, :4] * cloud_mask
     input_tensor = np.concat([cloud_mask, band_stack], axis=2)
 
     normalized = input_tensor.astype(np.float32)

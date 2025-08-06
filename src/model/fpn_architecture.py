@@ -23,13 +23,14 @@ class CNNBranch(nn.Module):
         x = self.features(x)
         return x
     
-class MultiModalCNN(nn.Module):
+class MultiModalFPN(nn.Module):
     def __init__(self, fc_units=128, fusioned_kernel_units=64, dropout=0.4, final_dropout=0.4):
         super().__init__()
+        # init optical and SAR branch separately to allow multi-modal behavior
         self.optical_branch = CNNBranch(5, dropout)
-        #self.sar_desc_branch = CNNBranch(4, dropout)
         self.sar_branch = CNNBranch(4, dropout)
-        
+
+        # bottom-up CNN
         self.conv2 = nn.Sequential(
             nn.Conv2d(32 * 3, 64, kernel_size=3, padding=1),           # 64x64
             nn.BatchNorm2d(64),
@@ -74,8 +75,6 @@ class MultiModalCNN(nn.Module):
 
     def forward(self, x):
         # x: (B, 13, 64, 64)
-        # filter visual spectrum based on cloud mask
-        #x[:, 1:5, :, :] = x[:, 1:5, :, :] - (x[:, 1:5, :, :] * x[:, [0], :, :])
         x_opt = self.optical_branch(x[:, 0:5, :, :])      # (B, 32, 32, 32)
         x_sar_desc = self.sar_branch(x[:, 5:9, :, :]) # (B, 32, 32, 32)
         x_sar_asc = self.sar_branch(x[:, 9:, :, :]) # (B, 32, 32, 32)
