@@ -7,8 +7,6 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from config import BAND_LABELS
 
-
-
 EPSILON = 1e-6  # for safe division
 
 def extract_features(img):

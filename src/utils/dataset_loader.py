@@ -22,6 +22,7 @@ class LandslideDataset(Dataset):
                  csv_path, 
                  transform=None, 
                  filter_obvious_negatives = True,
+                 band_selection=None,
                  device="cpu"
                  ):
         """
@@ -30,11 +31,13 @@ class LandslideDataset(Dataset):
             csv_path: Path to CSV file with image IDs and labels
             transform: Optional transform to apply to images
             filter_obvious_negatives: Ignore the obvious negative images (based on feature model) eg. to shrink training data  
+            band_selection: Optional list of band indices to select from the images
             device: Device to load data onto ("cpu" or "cuda")
         """
         self.image_dir = Path(image_dir)
         self.transform = transform
         self.device = device
+        self.band_selection = band_selection
         
         # Load CSV data
         self.df = pd.read_csv(csv_path)
@@ -62,6 +65,10 @@ class LandslideDataset(Dataset):
             # Load image and convert to tensor
             image = np.load(img_path).astype(np.float32)
             image = torch.from_numpy(image).permute(2, 0, 1)  # (C, H, W)
+            
+            # Apply band selection if specified
+            if self.band_selection is not None:
+                image = image[self.band_selection, :, :]
             
             # Move to device if specified
             if device != "cpu":

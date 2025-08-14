@@ -14,9 +14,6 @@ import math
 from sklearn.model_selection import KFold
 from codecarbon import track_emissions
 
-
-#warnings.filterwarnings('ignore')
-
 # Add src to Python path
 src_path = str(Path(__file__).parent.parent)
 if src_path not in sys.path:
@@ -24,7 +21,6 @@ if src_path not in sys.path:
 
 import config
 from model.model_config import get_multimodal_cnn_model
-from model.experiment import ImprovedMultiModalFPN
 from utils.augmentation import DataAugmentationTransform
 from utils.visualizations import create_training_plots, create_summary_plot
 from utils.dataset_loader import LandslideDataset, TransformedSubset
@@ -154,7 +150,7 @@ def train_model(fc_units=256,
                 weight_decay=1e-4, 
                 bce_weight=1.0,
                 batch_size=config.BATCH_SIZE,
-                show_process=True, 
+                show_process=False, 
                 save_model=True):
     """Main training function with 5-fold cross-validation and no early stopping."""
     print(f"Using device: {config.DEVICE}")
@@ -213,11 +209,17 @@ def train_model(fc_units=256,
             shuffle=False,
             num_workers=0
         )
-        model = get_multimodal_cnn_model(fc_units=fc_units, fusioned_kernel_units=fusioned_kernel_units, dropout=dropout, final_dropout=final_dropout).to(device)
+
+        # init model
+        model = MultiModalFPN(fc_units=fc_units, fusioned_kernel_units=fusioned_kernel_units, dropout=dropout, final_dropout=final_dropout).to(device)
         total_params = sum(p.numel() for p in model.parameters())
         print(f"Total parameters: {total_params:,}")
+
+        # define loss function
         pos_weight = torch.tensor([bce_weight]).to(device)
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+
+        # define optimizer
         optimizer = optim.Adam(
             model.parameters(),
             lr=lr,
@@ -230,6 +232,7 @@ def train_model(fc_units=256,
             total_epochs=config.EPOCHS,
             min_lr=1e-6
         )
+
         train_losses, val_losses, train_accuracies, val_accuracies, train_f1s, val_f1s = [], [], [], [], [], []
         for epoch in range(config.EPOCHS):
             if show_process:
@@ -277,6 +280,20 @@ def train_model(fc_units=256,
                 "final_val_predictions": all_predictions,
                 "val_targets": all_targets,
                 "f1_opt_threshold": f1_opt_threshold,
+                "lr": lr,
+                "weight_decay": weight_decay,
+                "bce_weight": bce_weight,
+                "fc_units": fc_units,
+                "fusioned_kernel_units": fusioned_kernel_units,
+                "dropout": dropout,
+                "final_dropout": final_dropout,
+                "batch_size": batch_size,
+                "warmup_epochs": warmup_epochs,
+                "total_epochs": config.EPOCHS,
+                "optimizer": "Adam",
+                "criterion": "BCEWithLogitsLoss",
+                "device": config.DEVICE,
+                "seed": config.SEED,
             }, model_path)
             # Create training plots for this fold
             create_training_plots(train_accuracies, val_accuracies, 
@@ -289,8 +306,7 @@ def train_model(fc_units=256,
             'val_recall': val_recall,
             'val_precision': val_precision
         })
-        
-    
+
     # Calculate and display average metrics across all folds
     print("\n" + "="*80)
     print("CROSS-VALIDATION RESULTS SUMMARY")
@@ -329,4 +345,4 @@ def train_model(fc_units=256,
     return fold_metrics
 
 if __name__ == "__main__":
-    train_model()
+    train_model(show_process=True)

@@ -69,8 +69,7 @@ BATCH_SIZE = 32
 LEARNING_RATE = 1e-3
 EPOCHS = 100
 
-
 DEVICE = "cuda"  # or "cpu"
 
 # Name for the saved model file
-MODEL_NAME = "landslide_MMCNN_V6"
+MODEL_NAME = "landslide_MMCNN_final42"
