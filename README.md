@@ -1,9 +1,14 @@
 # 🛰️ Landslide Image Classification from Multi-Modal Satellite Imagery
-Tackling Zindi's [Landslide Classification Challenge](https://zindi.africa/competitions/classification-for-landslide-detection) - a computer vision task on bi-temporal Sentinel-1 (SAR) and Sentinel-2 (optical) satellite imagery. This project  implements classic data preprocessing, augmentation and deep learning using a lightweight multi-modal architecture (< 1M parameters). An efficient data filtering methode has proven to be not only shrink training costs by more than half (279 -> 126 Wh), but also significantly boost performance. Another architectural choice, the Feature Pyramid Network (FPN), couldn't increase performance. 
-The solution achieved a test F1-score of .877 (winning F1: .907) and hit place 23 (of 303) on the final leaderboard. 
+Tackling Zindi's [Landslide Classification Challenge](https://zindi.africa/competitions/classification-for-landslide-detection)— a computer vision task on bi-temporal Sentinel-1 (SAR) and Sentinel-2 (optical) satellite imagery.
+This project implements classic data preprocessing, augmentation, and deep learning using a lightweight multi-modal architecture (< 1M parameters).
+An efficient data filtering method has proven to not only shrink training costs by more than half (279 → 126 Wh) but also significantly boost performance.
+Another architectural choice, the Feature Pyramid Network (FPN), did not increase performance.
+
+The solution achieved a test F1-score of 0.877 (winning F1: 0.907) and ranked 23rd out of 303 teams on the final leaderboard.
 
 ## 📊 Data Overview
-The given data unites bi-temporal Sentinel-1 (SAR) and Sentinel-2 (optical) satellite imagery. The SAR data from Sentinel provides VH and VV bands both for pre- and post-desaster as well as descending and ascending, which gives the possibility to train a *change detection network*. 
+The provided dataset combines bi-temporal Sentinel-1 (SAR) and Sentinel-2 (optical) satellite imagery.
+The SAR data from Sentinel-1 provides VH and VV bands for both pre- and post-disaster imagery, as well as for descending and ascending passes, enabling the training of a *change detection network*.
 
 ![](assets/example_image.png)
 
@@ -39,7 +44,10 @@ Predicting the test data is supported by the following concepts the boost perfor
 
 ## 📈 Performance
 
-The following image shows the behaivior of the validation F1-score during training for different approaches. The curves represent the mean values over 10 folds. The blue curve represents the final approach that got submitted to the challenge. All other curves are realized by removing a single building block from the final approach - allowing a direct comparisson of the concepts improtance. However, since all approaches use the same hyperparameters, it leaves the possibility that each model might be more effective given hyperparameter tuning.
+The figure below shows the behavior of the validation F1-score during training for different approaches.
+The curves represent the mean values over 10 folds. The blue curve represents the final approach submitted to the challenge.
+All other curves are produced by removing a single building block from the final approach, allowing a direct comparison of the importance of each concept.
+However, since all approaches use the same hyperparameters, it is possible that individual models could perform better with dedicated hyperparameter tuning.
 
 ![](assets/f1_comparison.png)
 
@@ -50,77 +58,59 @@ The FPN architecture enables the model to simultanously detect large- and small-
 Cleaning the dataset from *obvious negatives* enabled the model to focus on vavluable examples of landslide and non-landslide images, what boostes performance by a noticable amount. This methode enables a much faaster and more balanced training (~39% positives vs ~17% pre-filtering) 
 
 ### Multi Modality
-The *only_SAR* and *only_optical* curves fall significantly under the blue one, indicating that multi-modality plays a key roll for landslide detection. While the SAR model trains converges faster the optical counterpart performed better after completion of 100 training epochs.
+The *SAR only* and *optical only* curves fall significantly under the blue one, indicating that multi-modality plays a key roll for landslide detection. While the SAR model trains converges faster the optical counterpart performed better after completion of 100 training epochs.
 
 
 ## 🚀 Quick Start
-Installation
-bash# Clone the repository
+
+### Installation
+
+Clone the repository
+```
 git clone https://github.com/PhilipJanz/Landslide-Image-Classification.git
 cd Landslide-Image-Classification
+```
 
-# Install dependencies
+Install dependencies
+```
 pip install -r requirements.txt
-Data Preparation
+```
+
+### Data Preparation
 
 Place raw satellite images in data/raw/train/images/ and data/raw/test/images/
-Run preprocessing:
-
+Run data & feature preprocessing:
+```
 bashpython src/utils/image_preprocessing.py
-python src/utils/feature_preprocessing.py
-Training
-bash# Train the negative filter model
+```
+
+### Training
+
+> [!NOTE]
+> Check out the config.py file to set crucial parameters and model name.
+
+Train the negative filter model
+```
 python src/model/neg_filter_model.py
+```
 
-# Train the main CNN model
+Train the main CNN model
+```
 python src/model/train.py
+```
 
-# Optional: Hyperparameter optimization
+Optional: Hyperparameter optimization
+```
 python src/model/hyperparameter_opt.py
-Prediction
+```
+
+### Prediction
+```
 bashpython src/model/predict.py
-📁 Project Structure
-├── data/
-│   ├── raw/                    # Original satellite imagery
-│   ├── processed/               # Preprocessed images and features
-│   └── submissions/             # Model predictions
-├── models/                      # Saved model checkpoints
-├── src/
-│   ├── config.py               # Configuration settings
-│   ├── model/
-│   │   ├── train.py            # Main training script
-│   │   ├── predict.py          # Inference pipeline
-│   │   ├── fpn_architecture.py # Multi-modal FPN implementation
-│   │   └── neg_filter_model.py # XGBoost pre-filter
-│   └── utils/
-│       ├── image_preprocessing.py
-│       ├── feature_preprocessing.py
-│       ├── augmentation.py
-│       └── dataset_loader.py
-└── notebooks/                   # Exploratory analysis
-🔧 Technical Details
-Model Architecture
+```
 
-Optical Branch: Processes 5 bands (RGB + NIR + cloud mask)
-SAR Branches: Separate processing for ascending/descending passes
-FPN Backbone: 4-level feature pyramid with lateral connections
-Fusion: Multi-scale feature aggregation with global pooling
 
-Training Strategy
-
-Optimizer: Adam with cosine annealing and warmup
-Loss: Weighted BCE loss to handle class imbalance
-Augmentation: Random flips, rotations, and patch erasing
-Regularization: Dropout and weight decay
-
-[INSERT: Training curves showing loss/accuracy/F1 over epochs]
-Inference Pipeline
-
-Load ensemble of 10 models from cross-validation
-Apply 8-fold test-time augmentation
-Average predictions with uncertainty estimation
-Apply F1-optimized thresholds
-Post-process with negative filter results
-
-🌍 Environmental Impact
-This project includes carbon emission tracking using CodeCarbon to monitor the environmental footprint of model training.
+## 🌍 Environmental Impact
+To align with the challenge's ethical guidelines, this project includes carbon emission tracking using CodeCarbon to monitor the environmental footprint of model training.
+The final approach, involving the training of 10 distinct deep learning models, consumed around 126 Wh on a system with an Intel i7-9700K CPU and an NVIDIA RTX 2080Ti.
+This solution is therefore extremely lightweight and scalable, even on less powerful consumer hardware.
