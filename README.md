@@ -1,61 +1,59 @@
 # 🛰️ Landslide Image Classification from Multi-Modal Satellite Imagery
-A deep learning approach for detecting landslides using multi-temporal Sentinel-1 (SAR) and Sentinel-2 (optical) satellite imagery. This project implements a two-stage detection pipeline combining traditional machine learning for efficient negative filtering with a multi-modal Feature Pyramid Network (FPN) for precise landslide identification.
-📊 Overview
-This solution addresses the challenge of detecting landslides from satellite imagery by leveraging both optical and radar data to overcome limitations like cloud coverage. The approach combines:
+Tackling Zindi's [Landslide Classification Challenge](https://zindi.africa/competitions/classification-for-landslide-detection) - a computer vision task on bi-temporal Sentinel-1 (SAR) and Sentinel-2 (optical) satellite imagery. This project  implements classic data preprocessing, augmentation and deep learning using a lightweight multi-modal architecture (< 1M parameters). An efficient data filtering methode has proven to be not only shrink training costs by more than half (279 -> 126 Wh), but also significantly boost performance. Another architectural choice, the Feature Pyramid Network (FPN), couldn't increase performance. 
+The solution achieved a test F1-score of .877 (winning F1: .907) and hit place 23 (of 303) on the final leaderboard. 
 
-Multi-modal data fusion: Integrating optical (Sentinel-2) and SAR (Sentinel-1) imagery
-Two-stage detection: XGBoost pre-filter + Deep CNN for efficiency
-Temporal analysis: Using pre- and post-event imagery to detect changes
-Advanced architecture: Custom Multi-Modal FPN with separate branches for different data modalities
+## 📊 Data Overview
+The given data unites bi-temporal Sentinel-1 (SAR) and Sentinel-2 (optical) satellite imagery. The SAR data from Sentinel provides VH and VV bands both for pre- and post-desaster as well as descending and ascending, which gives the possibility to train a *change detection network*. 
 
-[INSERT: Example visualization showing input satellite images (optical + SAR) and predicted landslide mask]
-🏗️ Architecture
-Two-Stage Pipeline
+![](assets/example_image.png)
 
-Stage 1 - Negative Filter (XGBoost)
+The training dataset is highly unbalanced (~17% positives) and contains even images of waters and other obvious non-landslide images. This observation motivated the application of a pre-filter model that would catch obvious negatives to exclude them from the deep learning training.   
 
-Extracts hand-crafted features (NDVI, SAVI, polarization ratios, etc.)
-Filters out obvious non-landslide areas with 100% precision
-Reduces computational load by ~30-40%
+## 🏗️ Model Pipeline and Architecture
+This solution addresses the challenge by leveraging both optical and radar data in the same model to overcome limitations like cloud coverage. The approach combines:
 
+- Multi-modal data fusion: Integrating optical (Sentinel-2) and SAR (Sentinel-1) imagery
+- Two-stage detection: XGBoost pre-filter + Deep CNN for efficiency
+- Temporal analysis: Using pre- and post-event imagery to detect changes
+- Advanced architecture: Custom Multi-Modal FPN with separate branches for different data modalities
 
-Stage 2 - Multi-Modal FPN
+### Stage 1 - Negative Filter (XGBoost)
 
-Separate CNN branches for optical and SAR data
-Feature Pyramid Network for multi-scale feature extraction
-Ensemble of 10 models from cross-validation
+- Extracts hand-crafted features (NDVI, SAVI, polarization ratios, etc.)
+- Filters out obvious non-landslide areas with 100% precision (dont loose any positive datapoint)
 
 
+### Stage 2 - Multi-Modal FPN
 
-[INSERT: Architecture diagram showing the two-stage pipeline and FPN structure]
-Key Features
+- Separate CNN branches for optical and SAR data
+- Feature Pyramid Network for multi-scale feature extraction
+- Ensemble of 10 models from cross-validation
 
-Input: 64×64 pixel patches with 13 channels:
+### Inference Stage
+Predicting the test data is supported by the following concepts the boost performance and robustness:
 
-5 optical bands (RGB, NIR, cloud mask)
-4 descending SAR bands (VV/VH pre/post)
-4 ascending SAR bands (VV/VH pre/post)
-
-
-Preprocessing:
-
-BigEarthNet v2 normalization
-Temporal difference computation
-Cloud coverage detection
-Multiple vegetation and water indices
+- 10-fold cross-validation ensuring generalization
+- Test-time augmentation with 8 transformation combinations (h_flip x v_flip x rotation_90°)
+- F1-optimized thresholds for each model
 
 
+## 📈 Performance
 
-📈 Performance
-The model achieves robust performance through:
+The following image shows the behaivior of the validation F1-score during training for different approaches. The curves represent the mean values over 10 folds. The blue curve represents the final approach that got submitted to the challenge. All other curves are realized by removing a single building block from the final approach - allowing a direct comparisson of the concepts improtance. However, since all approaches use the same hyperparameters, it leaves the possibility that each model might be more effective given hyperparameter tuning.
 
-10-fold cross-validation ensuring generalization
-Test-time augmentation with 8 transformation combinations
-Ensemble prediction from multiple folds
-F1-optimized thresholds for each model
+![](assets/f1_comparison.png)
 
-[INSERT: Performance metrics table or confusion matrix visualization]
-🚀 Quick Start
+### Feature Pyramid Network
+The FPN architecture enables the model to simultanously detect large- and small-scale patters. In a direct comparison with a conventional CNN there is no difference in performance. This result suggests that the scale of the images is not large enough that a advances architecture such as the FPN, could lead to any advantage. 
+
+### Data Filtering
+Cleaning the dataset from *obvious negatives* enabled the model to focus on vavluable examples of landslide and non-landslide images, what boostes performance by a noticable amount. This methode enables a much faaster and more balanced training (~39% positives vs ~17% pre-filtering) 
+
+### Multi Modality
+The *only_SAR* and *only_optical* curves fall significantly under the blue one, indicating that multi-modality plays a key roll for landslide detection. While the SAR model trains converges faster the optical counterpart performed better after completion of 100 training epochs.
+
+
+## 🚀 Quick Start
 Installation
 bash# Clone the repository
 git clone https://github.com/PhilipJanz/Landslide-Image-Classification.git
